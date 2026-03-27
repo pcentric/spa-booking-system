@@ -5,9 +5,8 @@ import { useAuth } from '../../hooks/useAuth';
 import useMergedTherapists from '../../hooks/useMergedTherapists';
 import logger from '../../utils/logger';
 import { validateBookingForm, getErrorMessages } from '../../utils/validators';
-import { transformBookingToApi, transformEditToApi, transformItemToApi } from '../../utils/bookingTransform';
+import { transformEditToApi, transformItemToApi } from '../../utils/bookingTransform';
 import {
-  toApiDate,
   apiDateToHtmlDate,
   getBookingMinHtmlDate,
   isValidCreateBookingDate,
@@ -16,7 +15,6 @@ import {
 import { calculateEndTime } from '../../utils/timeUtils';
 import Input from '../common/Input';
 import Select from '../common/Select';
-import Button from '../common/Button';
 import BookingItemRow from './BookingItemRow';
 
 const BookingForm = React.forwardRef(({ booking, initialData, onSuccess }, ref) => {

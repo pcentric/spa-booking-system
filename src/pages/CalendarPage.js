@@ -9,7 +9,7 @@ import { toApiDate } from '../utils/dateUtils';
 
 const CalendarPage = ({ filters = {} }) => {
   const { selectedDate, setSelectedDate, openPanel } = useUI();
-  const { fetchBookings, loadMoreBookings, setSelectedBooking, bookings, pagination, isLoadingMore } = useBookings();
+  const { fetchBookings, loadMoreBookings, setSelectedBooking, pagination, isLoadingMore } = useBookings();
   const { loadTherapists, loadRooms } = useMasterData();
 
   // Store date info for load more

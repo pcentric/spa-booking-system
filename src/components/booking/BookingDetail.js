@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { useUI } from '../../hooks/useUI';
 import { useBookings } from '../../hooks/useBookings';
 import logger from '../../utils/logger';
-import { toDisplayDate, toDisplayTime, toDisplayTimeRange } from '../../utils/dateUtils';
-import Button from '../common/Button';
+import { toDisplayDate, toDisplayTimeRange } from '../../utils/dateUtils';
 import CancelDeleteModal from '../common/CancelDeleteModal';
 
 const BookingDetail = ({ booking, onClose }) => {
@@ -117,8 +116,6 @@ const isCancelled =
   normalizedStatus === 'cancelled' ||
   normalizedStatus === 'canceled' ||
   normalizedStatus === 'cancel';
-
-const displayStatus = rawStatus || 'Unknown';
 
   return (
     <div className="space-y-6 divide-y divide-gray-200">

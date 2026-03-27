@@ -97,12 +97,6 @@ const TherapistSelector = ({ serviceId, serviceAt, value, onChange, label = 'The
     return `${therapist.alias || therapist.name} (${therapist.gender || 'Unknown'})`;
   };
 
-  const getGenderColor = (gender) => {
-    if (gender?.toLowerCase() === 'female') return 'bg-pink-100 text-pink-700';
-    if (gender?.toLowerCase() === 'male') return 'bg-blue-100 text-blue-700';
-    return 'bg-gray-100 text-gray-700';
-  };
-
   return (
     <div className="w-full relative" ref={containerRef}>
       <label className="block text-sm font-medium text-gray-700 mb-1">

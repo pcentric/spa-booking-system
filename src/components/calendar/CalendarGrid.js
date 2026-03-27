@@ -9,7 +9,6 @@ import useBookings from '../../hooks/useBookings';
 import useMergedTherapists from '../../hooks/useMergedTherapists';
 import { useUI } from '../../hooks/useUI';
 import logger from '../../utils/logger';
-import { toApiDate } from '../../utils/dateUtils';
 import { SLOT_HEIGHT, TOTAL_SLOTS } from '../../utils/timeUtils';
 
 /**
@@ -131,7 +130,7 @@ function CalendarGrid({ selectedDate, onDateChange, onBookingClick, filters = {}
       count: bookingsList.length,
       therapistCount: therapists?.length,
     });
-  }, [bookingsList.length]);
+  }, [bookingsList.length, therapists?.length]);
 
   /**
    * Handle drag end: reschedule booking to new therapist and/or time
@@ -198,7 +197,7 @@ function CalendarGrid({ selectedDate, onDateChange, onBookingClick, filters = {}
         });
 
         // Persist to API (with complete booking data including required fields)
-        const result = await updateBooking(bookingId, updateData, currentBooking);
+        await updateBooking(bookingId, updateData, currentBooking);
 
         logger.info('CalendarGrid', 'Booking updated successfully', { bookingId });
 
@@ -211,7 +210,8 @@ function CalendarGrid({ selectedDate, onDateChange, onBookingClick, filters = {}
         addToast(successMessage, 'success');
       } catch (error) {
         // Rollback on error
-        rescheduleRollback(bookingId, previousState, error.message);
+        rescheduleRollback(bookingId, previousState);
+        logger.error('CalendarGrid', 'Update failed', error.message);
 
         // Check if it's a validation error (422)
         const missingFields = error.response?.data?.errors || {};
@@ -253,7 +253,7 @@ function CalendarGrid({ selectedDate, onDateChange, onBookingClick, filters = {}
         }
       }
     },
-    [bookings, therapists, rescheduleOptimistic, rescheduleRollback, updateBooking, addToast]
+    [bookings, therapists, rescheduleOptimistic, rescheduleRollback, updateBooking, addToast, openPanel]
   );
 
   // Show loading state if no therapists and bookings loaded

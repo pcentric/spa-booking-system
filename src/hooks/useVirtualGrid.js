@@ -63,10 +63,11 @@ export function useVirtualGrid({
   }, [updateVirtualization]);
 
   useEffect(() => {
-    if (containerRef?.current) {
-      containerRef.current.addEventListener('scroll', handleScroll, { passive: true });
+    const container = containerRef?.current;
+    if (container) {
+      container.addEventListener('scroll', handleScroll, { passive: true });
       return () => {
-        containerRef.current?.removeEventListener('scroll', handleScroll);
+        container.removeEventListener('scroll', handleScroll);
         if (rafRef.current) {
           cancelAnimationFrame(rafRef.current);
         }

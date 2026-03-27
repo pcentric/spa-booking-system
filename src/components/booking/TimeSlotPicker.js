@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { logger } from '../../utils/logger';
-import { isWithinBusinessHours, calculateEndTime } from '../../utils/timeUtils';
+import { isWithinBusinessHours } from '../../utils/timeUtils';
 
 const TimeSlotPicker = ({ value, onChange, date, label = 'Start Time' }) => {
   const [error, setError] = useState(null);

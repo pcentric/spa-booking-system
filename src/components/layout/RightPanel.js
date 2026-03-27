@@ -9,7 +9,7 @@ import BookingForm from '../booking/BookingForm.js';
 const RightPanel = () => {
   const formRef = useRef(null);
   const { isPanelOpen, panelMode, panelBookingId, panelInitialData, closePanel } = useUI();
-  const { selectedBooking, deleteBooking, cancelBooking } = useBookings();
+  const { selectedBooking } = useBookings();
   const [fetchedBooking, setFetchedBooking] = useState(null);
   const [isLoadingBooking, setIsLoadingBooking] = useState(false);
 
@@ -64,25 +64,6 @@ const RightPanel = () => {
     closePanel();
   };
 
-  const handleDeleteSuccess = async () => {
-    try {
-      await deleteBooking(panelBookingId);
-      logger.info('RightPanel', 'Booking deleted successfully', { id: panelBookingId });
-      closePanel();
-    } catch (error) {
-      logger.error('RightPanel', 'Failed to delete booking', error);
-    }
-  };
-
-  const handleCancelSuccess = async () => {
-    try {
-      await cancelBooking(panelBookingId);
-      logger.info('RightPanel', 'Booking cancelled successfully', { id: panelBookingId });
-      setFetchedBooking(prev => prev ? { ...prev, status: 'Cancelled' } : null);
-    } catch (error) {
-      logger.error('RightPanel', 'Failed to cancel booking', error);
-    }
-  };
 
   const bookingForEdit = panelMode === 'edit' ? (fetchedBooking || selectedBooking) : null;
   return (

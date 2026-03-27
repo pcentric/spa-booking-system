@@ -93,7 +93,6 @@ const FiltersBar = ({ filters = {}, onFiltersChange }) => {
   const getDateString = (date) => {
     // Convert Date object to YYYY-MM-DD string
     if (!date) return '';
-    let d = date;
     if (typeof date === 'string') {
       return date;
     }
@@ -196,7 +195,7 @@ const FiltersBar = ({ filters = {}, onFiltersChange }) => {
           {/* Search Results Dropdown */}
           {showSearchResults && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-50 max-h-96 overflow-y-auto">
-              {!therapists || therapists.length === 0 && (
+              {(!therapists || therapists.length === 0) && (
                 <div className="px-4 py-6 text-center">
                   <p className="text-sm text-gray-500">Loading therapists...</p>
                 </div>

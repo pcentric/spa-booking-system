@@ -12,7 +12,7 @@ const Modal = () => {
     return null;
   }
 
-  const { title, message, icon, buttonText = 'OK', buttonColor = 'blue' } = modalData || {};
+  const { title, message, buttonText = 'OK' } = modalData || {};
 
   const getIconColor = () => {
     if (modalType === 'success') return 'text-green-600';

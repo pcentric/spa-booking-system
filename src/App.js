@@ -60,7 +60,7 @@ const AppContent = () => {
               path="/dashboard"
               element={
                 <AppShell>
-                  <Dashboard initialBookings={[]} therapists={[]} />
+                  <Dashboard />
                 </AppShell>
               }
             />
@@ -74,7 +74,7 @@ const AppContent = () => {
 };
 
 const BootstrapWrapper = () => {
-  const { isReady, error, isLoading, retry, initialBookings, therapists } = useBootstrapApp();
+  const { isReady, error, isLoading, retry } = useBootstrapApp();
 
   if (isLoading) {
     return (

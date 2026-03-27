@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { logger } from '../../utils/logger';
 import { calculateEndTime } from '../../utils/timeUtils';
 import { htmlDateToApiDate } from '../../utils/dateUtils';
@@ -6,7 +6,6 @@ import ServiceSelector from './ServiceSelector';
 import TherapistSelector from './TherapistSelector';
 import RoomSelector from './RoomSelector';
 import TimeSlotPicker from './TimeSlotPicker';
-import Input from '../common/Input';
 
 const BookingItemRow = ({ item, itemIndex, date, onUpdate, onRemove, error, therapists = [] }) => {
   // Extract field-level errors from error object if it's an object

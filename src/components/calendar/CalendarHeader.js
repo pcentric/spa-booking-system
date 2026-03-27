@@ -52,7 +52,6 @@ function CalendarHeader({ containerRef, virtualGrid, therapists = [], bookings =
         }}
       >
         {visibleTherapists.map((therapist, idx) => {
-          const globalIndex = virtualGrid.visibleColumnRange.start + idx;
           const genderLabel = getGenderLabel(therapist.gender);
           const bookingCount = bookings.filter(b => Number(b.therapist_id) === Number(therapist.id)).length;
           return (

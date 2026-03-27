@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Droppable, Draggable } from '@hello-pangea/dnd';
+import { Droppable } from '@hello-pangea/dnd';
 import BookingCard from './BookingCard';
 import EmptySlot from './EmptySlot';
 import BookingInProgressSlot from './BookingInProgressSlot';
@@ -85,7 +85,7 @@ function TherapistColumn({
     }
 
     return filtered;
-  }, [bookings, therapist?.id]);
+  }, [bookings, therapist?.id, therapist?.name]);
 
   logger.debug('TherapistColumn', 'Rendering therapist column', {
     therapistId: therapist.id,

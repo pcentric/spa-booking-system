@@ -1,6 +1,6 @@
 // Authentication Context — token, user, login/logout, session restoration
 import React, { useReducer, useEffect, useCallback } from 'react';
-import { login as loginService, getStoredToken, getStoredUser, logout as logoutService } from '../services/authService';
+import { login as loginService, logout as logoutService } from '../services/authService';
 import { registerUnauthorizedCallback } from '../services/apiClient';
 import logger from '../utils/logger';
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getTopPosition, minutesFromDayStart } from '../../utils/timeUtils';
+import { getTopPosition } from '../../utils/timeUtils';
 import logger from '../../utils/logger';
 
 /**

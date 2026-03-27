@@ -102,7 +102,7 @@ export function isWithinBusinessHours(timeStr) {
  */
 export function isEndTimeWithinBusinessHours(startTimeStr, durationMinutes) {
   const endTimeStr = calculateEndTime(startTimeStr, durationMinutes);
-  const [hours, minutes] = endTimeStr.split(':').map(Number);
+  const [hours] = endTimeStr.split(':').map(Number);
   // Allow up to 23:59 (just before midnight)
   if (hours > 23) return false;
   return true;
