@@ -9,11 +9,9 @@ import { toApiDate } from '../utils/dateUtils';
 
 const CalendarPage = ({ filters = {} }) => {
   const { selectedDate, setSelectedDate, openPanel } = useUI();
-  const { fetchBookings, loadMoreBookings, setSelectedBooking, pagination, isLoadingMore } = useBookings();
+  const { fetchAllBookings, setSelectedBooking, pagination, isLoadingMore } = useBookings();
   const { loadTherapists, loadRooms } = useMasterData();
 
-  // Store date info for load more
-  const [dateInfo, setDateInfo] = React.useState({ startDate: '', endDate: '' });
 
   // Load bookings and therapists when date changes
   useEffect(() => {
@@ -36,9 +34,6 @@ const CalendarPage = ({ filters = {} }) => {
         tomorrow.setDate(tomorrow.getDate() + 1);
         const endDate = toApiDate(tomorrow);
 
-        // Store date info for load more functionality
-        setDateInfo({ startDate: apiDate, endDate });
-
         // Build serviceAt for current time (DD-MM-YYYY HH:MM:SS)
         const hh = String(d.getHours()).padStart(2, '0');
         const mm = String(d.getMinutes()).padStart(2, '0');
@@ -48,7 +43,7 @@ const CalendarPage = ({ filters = {} }) => {
 
         // Fetch bookings and therapists in parallel
         await Promise.all([
-          fetchBookings(apiDate, endDate),
+          fetchAllBookings(apiDate, endDate),
           loadTherapists(serviceAt),
         ]);
 
@@ -60,7 +55,7 @@ const CalendarPage = ({ filters = {} }) => {
     };
 
     loadData();
-  }, [selectedDate, fetchBookings, loadTherapists, loadRooms]);
+  }, [selectedDate, fetchAllBookings, loadTherapists, loadRooms]);
 
   const handleBookingClick = (bookingId) => {
     logger.debug('CalendarPage', 'Booking clicked', { bookingId });
@@ -77,15 +72,6 @@ const CalendarPage = ({ filters = {} }) => {
     setSelectedDate(newDate);
   };
 
-  const handleLoadMore = async () => {
-    try {
-      await loadMoreBookings(dateInfo.startDate, dateInfo.endDate);
-      logger.debug('CalendarPage', 'Loaded more bookings');
-    } catch (error) {
-      logger.error('CalendarPage', 'Failed to load more bookings', error);
-    }
-  };
-
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
       {/* Calendar Grid */}
@@ -99,7 +85,7 @@ const CalendarPage = ({ filters = {} }) => {
       {/* Pagination Controls */}
       <PaginationControls
         pagination={pagination}
-        onLoadMore={handleLoadMore}
+        onLoadMore={null}
         isLoadingMore={isLoadingMore}
       />
 

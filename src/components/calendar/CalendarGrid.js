@@ -124,6 +124,17 @@ function CalendarGrid({ selectedDate, onDateChange, onBookingClick, filters = {}
     return filtered;
   }, [bookings, filters, therapists]);
 
+  // Pre-group bookings by therapist to eliminate O(n*k) per-column filtering
+  const bookingsByTherapist = React.useMemo(() => {
+    const map = new Map();
+    for (const booking of bookingsList) {
+      const tid = booking.therapist_id;
+      if (!map.has(tid)) map.set(tid, []);
+      map.get(tid).push(booking);
+    }
+    return map;
+  }, [bookingsList]);
+
   // Only log on initial mount or when key data changes
   React.useEffect(() => {
     logger.debug('CalendarGrid', 'Bookings loaded', {
@@ -329,15 +340,17 @@ function CalendarGrid({ selectedDate, onDateChange, onBookingClick, filters = {}
               >
                 {visibleTherapists.map((therapist, idx) => {
                   const globalIndex = virtualGrid.visibleColumnRange.start + idx;
+                  const therapistBookings = bookingsByTherapist.get(therapist.id) || [];
                   return (
                     <TherapistColumn
                       key={`therapist-col-${therapist.id}`}
                       therapist={therapist}
                       therapistIndex={globalIndex}
-                      bookings={bookingsList}
+                      bookings={therapistBookings}
                       selectedDate={selectedDate}
                       onBookingClick={onBookingClick}
                       columnWidth={180}
+                      visibleRowRange={virtualGrid.visibleRowRange}
                     />
                   );
                 })}

@@ -2,7 +2,6 @@ import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { getTopPosition, getHeightFromDuration } from '../../utils/timeUtils';
 import { useUI } from '../../hooks/useUI';
-import logger from '../../utils/logger';
 
 /**
  * BookingCard — Single booking block with Figma design
@@ -34,24 +33,10 @@ function BookingCard({ booking, therapistIndex, bookingIndexInTherapist, onBooki
   const colors = getStatusColor();
 
   const handleClick = () => {
-    logger.debug('BookingCard', 'Booking clicked', { bookingId: booking.id });
     if (onBookingClick) {
       onBookingClick(booking.id);
     }
   };
-
-  logger.debug('BookingCard', 'Rendering booking', {
-    bookingId: booking.id,
-    isSelected,
-    status: booking.status,
-    therapistId: booking.therapist_id,
-    therapistName: booking.therapist_name,
-    service: booking.service_name,
-    startTime: booking.start_time,
-    duration: booking.duration,
-    topPosition,
-    height,
-  });
 
   return (
     <Draggable draggableId={`booking-${booking.id}`} index={bookingIndexInTherapist || 0}>

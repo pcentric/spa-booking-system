@@ -18,7 +18,7 @@ const initialState = {
     outlet: 1,
   },
   pagination: {
-    limit: 100,
+    limit: 500,
     offset: 0,
     total: 0,
     hasMore: false,
@@ -37,22 +37,11 @@ function bookingReducer(state, action) {
       const map = new Map();
       const bookings = action.payload.bookings || action.payload;
 
-      console.log('📦 FETCH_SUCCESS Reducer:', {
-        isArray: Array.isArray(bookings),
-        count: Array.isArray(bookings) ? bookings.length : 0,
-        sampleBooking: Array.isArray(bookings) ? bookings[0] : null,
-      });
-
       if (Array.isArray(bookings)) {
-        bookings.forEach((booking, idx) => {
-          if (!booking.id) {
-            console.warn(`⚠️ Booking ${idx} has no ID:`, booking);
-          }
+        bookings.forEach((booking) => {
           map.set(booking.id, booking);
         });
       }
-
-      console.log('✅ Map Created with', map.size, 'bookings');
 
       return {
         ...state,
@@ -203,10 +192,6 @@ export function BookingProvider({ children }) {
       });
 
       const transformed = transformBookingsFromApi(response.bookings);
-      console.log('✅ Transformed bookings:', {
-        count: transformed.length,
-        samples: transformed.slice(0, 2),
-      });
 
       dispatch({ type: 'FETCH_SUCCESS', payload: { bookings: transformed, pagination: response.pagination } });
       logger.info('Booking', `Loaded ${transformed.length} bookings`, {
@@ -214,18 +199,13 @@ export function BookingProvider({ children }) {
         total: response.pagination.total,
       });
     } catch (error) {
-      console.error('❌ Failed to fetch bookings:', {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-      });
       const errorMsg = error.response?.data?.message || error.message || 'Failed to fetch bookings';
       dispatch({ type: 'FETCH_FAILURE', payload: errorMsg });
       logger.error('Booking', 'Failed to fetch bookings', error);
     }
   }, []);
 
-  const loadMoreBookings = useCallback(async (startDate, endDate, outlet = 1, limit = 100) => {
+  const loadMoreBookings = useCallback(async (startDate, endDate, outlet = 1, limit = 500) => {
     dispatch({ type: 'LOAD_MORE_REQUEST' });
     try {
       const currentOffset = state.pagination.offset + state.pagination.limit;
@@ -241,6 +221,70 @@ export function BookingProvider({ children }) {
       dispatch({ type: 'LOAD_MORE_FAILURE', payload: errorMsg });
     }
   }, [state.pagination.offset, state.pagination.limit]);
+
+  // Auto-fetch all pages concurrently for large datasets
+  const fetchAllBookings = useCallback(async (startDate, endDate, outlet = 1) => {
+    dispatch({ type: 'FETCH_REQUEST' });
+    try {
+      // Fetch first page
+      const firstResponse = await bookingService.getBookings(startDate, endDate, outlet, 500, 0);
+      const firstTransformed = transformBookingsFromApi(firstResponse.bookings);
+
+      dispatch({ type: 'FETCH_SUCCESS', payload: { bookings: firstTransformed, pagination: firstResponse.pagination } });
+      logger.info('Booking', `Loaded ${firstTransformed.length} bookings (page 1 of ${firstResponse.pagination.totalPages})`, {
+        total: firstResponse.pagination.total,
+      });
+
+      // If there are more pages, fetch them concurrently
+      if (firstResponse.pagination.hasMore && firstResponse.pagination.totalPages > 1) {
+        const pagePromises = [];
+        for (let page = 2; page <= firstResponse.pagination.totalPages; page++) {
+          const offset = (page - 1) * 500;
+          pagePromises.push(
+            bookingService.getBookings(startDate, endDate, outlet, 500, offset)
+          );
+        }
+
+        // Wait for all pages to load
+        const remainingResponses = await Promise.all(pagePromises);
+
+        // Merge all remaining bookings
+        let allRemainingBookings = [];
+        remainingResponses.forEach((response) => {
+          allRemainingBookings = allRemainingBookings.concat(response.bookings || []);
+        });
+
+        const remainingTransformed = transformBookingsFromApi(allRemainingBookings);
+
+        // Merge with first page results
+        const allBookings = [...firstTransformed, ...remainingTransformed];
+        const finalMap = new Map();
+        allBookings.forEach((booking) => {
+          finalMap.set(booking.id, booking);
+        });
+
+        dispatch({
+          type: 'FETCH_SUCCESS',
+          payload: {
+            bookings: allBookings,
+            pagination: {
+              ...firstResponse.pagination,
+              hasMore: false,
+              currentPage: firstResponse.pagination.totalPages,
+            }
+          }
+        });
+
+        logger.info('Booking', `Loaded all ${allBookings.length} bookings (${firstResponse.pagination.totalPages} pages)`, {
+          total: firstResponse.pagination.total,
+        });
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to fetch bookings';
+      dispatch({ type: 'FETCH_FAILURE', payload: errorMsg });
+      logger.error('Booking', 'Failed to fetch bookings', error);
+    }
+  }, []);
 
   const createBooking = useCallback(async (bookingData) => {
     dispatch({ type: 'CREATE_REQUEST' });
@@ -401,7 +445,6 @@ export function BookingProvider({ children }) {
 
   const value = {
     bookings: state.bookings,
-    bookingsList: Array.from(state.bookings.values()), // For easy iteration
     selectedBookingId: state.selectedBookingId,
     selectedBooking: state.selectedBookingId ? state.bookings.get(state.selectedBookingId) : null,
     isLoading: state.isLoading,
@@ -411,6 +454,7 @@ export function BookingProvider({ children }) {
     filters: state.filters,
     pagination: state.pagination,
     fetchBookings,
+    fetchAllBookings,
     loadMoreBookings,
     createBooking,
     updateBooking,
