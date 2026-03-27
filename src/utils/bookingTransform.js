@@ -103,22 +103,24 @@ export function transformBookingFromApi(apiBooking) {
   if (!apiBooking) return null;
 
   try {
-    // API response has booking_item object with customer_name as key, containing array of items
-    // Get the items array from booking_item
+    // ✅ unwrap create-booking response shape: { booking: {...}, id: undefined }
+    const bookingData = apiBooking.booking && typeof apiBooking.booking === 'object'
+      ? apiBooking.booking
+      : apiBooking;
+
     let items = [];
     let customerNameFromBookingItem = null;
 
-    if (apiBooking.booking_item && typeof apiBooking.booking_item === 'object') {
-      const bookingItemKeys = Object.keys(apiBooking.booking_item);
+    if (bookingData.booking_item && typeof bookingData.booking_item === 'object') {
+      const bookingItemKeys = Object.keys(bookingData.booking_item);
       if (bookingItemKeys.length > 0) {
-        customerNameFromBookingItem = bookingItemKeys[0]; // Customer name is the key
-        const bookingItemValues = Object.values(apiBooking.booking_item);
-        // booking_item structure: { "customer_name": [{ id, service_id, ... }, ...] }
+        customerNameFromBookingItem = bookingItemKeys[0];
+        const bookingItemValues = Object.values(bookingData.booking_item);
         const firstValue = bookingItemValues[0];
+
         if (Array.isArray(firstValue)) {
           items = firstValue;
         } else if (firstValue && typeof firstValue === 'object') {
-          // Handle case where it might be nested differently
           items = [firstValue];
         }
       }
@@ -129,83 +131,78 @@ export function transformBookingFromApi(apiBooking) {
       firstItem: items[0],
     });
 
-    // Extract first item for main booking display
     const primaryItem = items?.[0];
 
-    // If no items in booking_item, try to construct from items array directly (some responses have this)
-    if (!primaryItem && apiBooking.items && Array.isArray(apiBooking.items)) {
+    if (!primaryItem && bookingData.items && Array.isArray(bookingData.items)) {
       console.log('transformBookingFromApi: Using items array from booking');
-      items = apiBooking.items;
+      items = bookingData.items;
     }
 
-    // If still no items, try to construct from top-level booking data
     if (!items[0]) {
       console.log('transformBookingFromApi: Creating fallback item from booking data', {
-        hasServiceId: !!apiBooking.service_id,
-        hasTherapistId: !!apiBooking.therapist_id,
+        hasServiceId: !!bookingData.service_id,
+        hasTherapistId: !!bookingData.therapist_id,
       });
 
-      // Get first booking item if available (has service info)
-      if (apiBooking.service_id) {
+      if (bookingData.service_id) {
         const fallbackItem = {
-          therapist_id: apiBooking.therapist_id,
-          therapist: apiBooking.therapist_name,
-          service_id: apiBooking.service_id,
-          service: apiBooking.service_name,
-          start_time: apiBooking.service_time || '',
-          end_time: apiBooking.service_end || '',
-          duration: apiBooking.duration,
-          room_items: apiBooking.room_id ? [{ room_id: apiBooking.room_id, room_name: apiBooking.room_name }] : [],
+          therapist_id: bookingData.therapist_id,
+          therapist: bookingData.therapist_name,
+          service_id: bookingData.service_id,
+          service: bookingData.service_name,
+          start_time: bookingData.service_time || '',
+          end_time: bookingData.service_end || '',
+          duration: bookingData.duration,
+          room_items: bookingData.room_id
+            ? [{ room_id: bookingData.room_id, room_name: bookingData.room_name }]
+            : [],
         };
         items = [fallbackItem];
       }
     }
 
-    // Still no valid item? This is an error condition
     if (!items[0]) {
       console.error('transformBookingFromApi: No valid items found after all attempts', {
-        hasBookingItem: !!apiBooking.booking_item,
-        hasServiceId: !!apiBooking.service_id,
-        hasItems: !!apiBooking.items,
-        bookingKeys: Object.keys(apiBooking).slice(0, 10),
+        hasBookingItem: !!bookingData.booking_item,
+        hasServiceId: !!bookingData.service_id,
+        hasItems: !!bookingData.items,
+        bookingKeys: Object.keys(bookingData).slice(0, 10),
       });
       return null;
     }
 
-    // Extract room from room_items array
     const primaryRoom = items[0].room_items?.[0];
 
-    // Extract customer name from various sources
     const customerName =
-      apiBooking.customer_name ||
+      bookingData.customer_name ||
       customerNameFromBookingItem ||
-      apiBooking.user?.name ||
+      bookingData.user?.name ||
       'Unknown';
 
     const transformedBooking = {
-      id: apiBooking.booking_id || apiBooking.id, // Use booking_id for delete/update operations, fallback to id
-      item_id: apiBooking.id, // Store item_id for cancel operations
-      customer_id: apiBooking.user_id,
+      id: bookingData.booking_id || bookingData.id,
+      item_id: bookingData.id,
+      customer_id: bookingData.user_id,
       customer_name: customerName,
-      customer_email: apiBooking.customer_email || apiBooking.user?.email,
-      customer_phone: apiBooking.mobile_number || apiBooking.user?.contact_number,
+      customer_email: bookingData.customer_email || bookingData.user?.email,
+      customer_phone: bookingData.mobile_number || bookingData.user?.contact_number,
       therapist_id: items[0].therapist_id,
       therapist_name: items[0].therapist,
       service_id: items[0].service_id,
       service_name: items[0].service,
-      start_time: items[0].start_time, // HH:MM:SS format
-      end_time: items[0].end_time, // HH:MM:SS format
-      duration: items[0].duration, // minutes
-      date: apiBooking.service_date, // DD-MM-YYYY format
+      start_time: items[0].start_time,
+      end_time: items[0].end_time,
+      duration: items[0].duration,
+      date: bookingData.service_date,
       room_id: primaryRoom?.room_id,
       room_name: primaryRoom?.room_name,
-      status: apiBooking.status || 'Confirmed',
-      payment_status: apiBooking.payment_type,
-      source: apiBooking.source,
-      notes: apiBooking.notes || apiBooking.note,
-      items: items, // Full items array kept for edit form
-      created_at: apiBooking.created_at,
-      updated_at: apiBooking.booking_created_at,
+      status: bookingData.status || 'Confirmed',
+      payment_status: bookingData.payment_type,
+      source: bookingData.source,
+      notes: bookingData.notes || bookingData.note,
+      items,
+      created_at: bookingData.created_at,
+      updated_at: bookingData.booking_created_at,
     };
 
     console.log('transformBookingFromApi: Successfully transformed booking:', {

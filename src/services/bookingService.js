@@ -190,18 +190,16 @@ export async function getUserDetails(userId) {
  */
 export async function createBooking(bookingData) {
   try {
-    // Validate input
     if (!bookingData) {
       throw new Error('Booking data is required');
     }
 
-    // Convert booking data to FormData as per API specification
     const formData = new FormData();
 
     for (const key in bookingData) {
-      if (bookingData.hasOwnProperty(key)) {
+      if (Object.prototype.hasOwnProperty.call(bookingData, key)) {
         const value = bookingData[key];
-        // Handle nested arrays/objects (like items)
+
         if (Array.isArray(value)) {
           formData.append(key, JSON.stringify(value));
         } else if (typeof value === 'object' && value !== null) {
@@ -213,43 +211,45 @@ export async function createBooking(bookingData) {
     }
 
     const response = await apiClient.post('/api/v1/bookings/create', formData);
-
     console.log('Create Booking Full Response:', JSON.stringify(response?.data, null, 2));
-
-    // API returns: { booking: { id: 205785, ... } }
-    // Try to extract booking from various response structures
 
     let booking = null;
 
-    // Structure 1: { booking: {...} }
     if (response?.data?.booking) {
       booking = response.data.booking;
-      console.log('Extracted booking from response.data.booking:', booking);
-    }
-    // Structure 2: { data: { bookingData: [...] } }
-    else if (response?.data?.data?.data?.bookingData && Array.isArray(response.data.data.data.bookingData)) {
+    } else if (
+      response?.data?.data?.data?.bookingData &&
+      Array.isArray(response.data.data.data.bookingData)
+    ) {
       booking = response.data.data.data.bookingData[0];
-      console.log('Extracted booking from response.data.data.data.bookingData[0]:', booking);
-    }
-    // Structure 3: Direct nested response
-    else if (response?.data?.data?.data) {
+    } else if (response?.data?.data?.data) {
       booking = response.data.data.data;
-      console.log('Using response.data.data.data:', booking);
-    }
-    else if (response?.data?.data) {
+    } else if (response?.data?.data) {
       booking = response.data.data;
-      console.log('Using response.data.data:', booking);
-    }
-    else if (response?.data) {
+    } else if (response?.data) {
       booking = response.data;
-      console.log('Using response.data:', booking);
     }
 
     if (!booking) {
       throw new Error('Could not extract booking from API response');
     }
 
-    return booking;
+    // Normalize booking id
+    const normalizedId =
+      booking.id ||
+      booking.booking_id ||
+      booking.bookingId ||
+      response?.data?.booking_id ||
+      response?.data?.id ||
+      response?.data?.data?.id ||
+      response?.data?.data?.data?.id;
+
+      
+
+    return {
+      ...booking,
+      id: normalizedId,
+    };
   } catch (error) {
     console.error('Failed to create booking:', error, error.message);
     throw error;

@@ -244,51 +244,65 @@ export function BookingProvider({ children }) {
 
   const createBooking = useCallback(async (bookingData) => {
     dispatch({ type: 'CREATE_REQUEST' });
+  
     try {
-      // First, create/get the customer
       logger.debug('Booking', 'Creating customer', {
         email: bookingData.customer_email
       });
+  
       const customerId = await bookingService.createOrGetCustomer(bookingData);
-
-      // Add customer ID to booking data and transform to API format
+  
       const bookingWithCustomer = {
         ...bookingData,
         customer_id: customerId,
       };
-
-      logger.debug('Booking', 'Transforming booking data', {
-        customerId
-      });
-
-      // Now that we have customer_id, we can transform the data
+  
+      logger.debug('Booking', 'Transforming booking data', { customerId });
+  
       const transformedData = transformBookingToApi(null, bookingWithCustomer);
-
-      logger.debug('Booking', 'Creating booking with customer', {
-        customerId,
-      });
-
+  
+      logger.debug('Booking', 'Creating booking with customer', { customerId });
+  
       const apiBooking = await bookingService.createBooking(transformedData);
-
-      console.log('Create Booking API Response:', JSON.stringify(apiBooking, null, 2));
-
+  
       if (!apiBooking) {
         throw new Error('No booking data returned from API');
       }
-
-      // Transform the API response
-      const transformed = transformBookingFromApi(apiBooking);
-
-      if (!transformed || !transformed.id) {
-        console.error('Transformed booking missing ID:', transformed, 'from API response:', apiBooking);
-        throw new Error('Failed to transform booking - missing ID');
+  
+      // Normalize id before transform
+      const normalizedApiBooking = {
+        ...apiBooking,
+        id: apiBooking.id || apiBooking.booking_id || apiBooking.bookingId,
+      };
+  
+      let transformed = transformBookingFromApi(normalizedApiBooking);
+  
+      // Fallback: fetch full booking detail if create response is partial
+      if ((!transformed || !transformed.id) && normalizedApiBooking.id) {
+        const fullBooking = await bookingService.getBookingDetail(normalizedApiBooking.id);
+        transformed = fullBooking;
       }
-
+  
+      if (!transformed || !transformed.id) {
+        console.error(
+          'Transformed booking missing ID:',
+          transformed,
+          'from API response:',
+          apiBooking
+        );
+        throw new Error('Booking was created, but the API did not return a valid booking id');
+      }
+  
       dispatch({ type: 'CREATE_SUCCESS', payload: transformed });
       logger.info('Booking', 'Booking created', { id: transformed.id, customerId });
+  
       return transformed;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message || 'Failed to create booking';
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        'Failed to create booking';
+  
       dispatch({ type: 'CREATE_FAILURE', payload: errorMsg });
       throw error;
     }
