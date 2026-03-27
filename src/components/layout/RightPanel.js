@@ -20,10 +20,26 @@ const RightPanel = () => {
       setFetchedBooking(null);
 
       getBookingDetail(panelBookingId)
-        .then((booking) => {
-          logger.debug('RightPanel', 'Booking fetched successfully', { id: panelBookingId });
-          setFetchedBooking(booking);
-        })
+      .then((booking) => {
+        logger.debug('RightPanel', 'Booking fetched successfully', { id: panelBookingId });
+    
+        setFetchedBooking({
+          ...(selectedBooking || {}),
+          ...(booking || {}),
+          customer_phone:
+            booking?.customer_phone ||
+            booking?.mobile_number ||
+            booking?.contact_number ||
+            booking?.user?.contact_number ||
+            booking?.user?.mobile_number ||
+            selectedBooking?.customer_phone ||
+            selectedBooking?.mobile_number ||
+            selectedBooking?.contact_number ||
+            selectedBooking?.user?.contact_number ||
+            selectedBooking?.user?.mobile_number ||
+            '',
+        });
+      })
         .catch((error) => {
           logger.error('RightPanel', 'Failed to fetch booking details', error);
           setFetchedBooking(selectedBooking || null);
@@ -69,7 +85,6 @@ const RightPanel = () => {
   };
 
   const bookingForEdit = panelMode === 'edit' ? (fetchedBooking || selectedBooking) : null;
-
   return (
     <div
       className={`fixed right-0 top-16 h-[calc(100%-4rem)] w-96 bg-white border-l border-gray-200 shadow-lg transition-transform duration-300 ease-in-out z-40 ${

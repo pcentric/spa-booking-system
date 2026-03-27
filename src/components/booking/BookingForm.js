@@ -5,7 +5,13 @@ import { useAuth } from '../../hooks/useAuth';
 import logger from '../../utils/logger';
 import { validateBookingForm, getErrorMessages } from '../../utils/validators';
 import { transformBookingToApi, transformEditToApi, transformItemToApi } from '../../utils/bookingTransform';
-import { toApiDate, apiDateToHtmlDate } from '../../utils/dateUtils';
+import {
+  toApiDate,
+  apiDateToHtmlDate,
+  getBookingMinHtmlDate,
+  isValidCreateBookingDate,
+  isValidEditBookingDate,
+} from '../../utils/dateUtils';
 import Input from '../common/Input';
 import Select from '../common/Select';
 import Button from '../common/Button';
@@ -136,7 +142,27 @@ const BookingForm = React.forwardRef(({ booking, onSuccess }, ref) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     logger.debug('BookingForm', 'Form submitted', { isEditing: !!booking });
+    const isEditing = !!booking;
 
+    if (isEditing) {
+      if (!isValidEditBookingDate(formData.service_at)) {
+        openModal('error', {
+          title: 'Invalid Date',
+          message: 'Invalid booking date.',
+          buttonText: 'OK',
+        });
+        return;
+      }
+    } else {
+      if (!isValidCreateBookingDate(formData.service_at)) {
+        openModal('error', {
+          title: 'Invalid Date',
+          message: 'Previous date booking cannot be created.',
+          buttonText: 'OK',
+        });
+        return;
+      }
+    }
     // Validate form
     const validationErrors = validateBookingForm(formData);
     if (Object.keys(validationErrors).length > 0) {
@@ -315,6 +341,7 @@ const BookingForm = React.forwardRef(({ booking, onSuccess }, ref) => {
             onChange={handleInputChange}
             required
             error={errors.service_at}
+            min={getBookingMinHtmlDate(booking ? 'edit' : 'create')}
           />
           <Select
             label="Source"

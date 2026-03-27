@@ -57,15 +57,40 @@ export function transformBookingDetailFromApi(apiBooking) {
     }
     const finalCustomerId = contentData.customer || apiBooking.user_id;
 
+    const customerPhone =
+      apiBooking.mobile_number ||
+      apiBooking.contact_number ||
+      apiBooking.phone ||
+      apiBooking.user?.contact_number ||
+      apiBooking.user?.mobile_number ||
+      apiBooking.user?.phone ||
+      additionalData.customer_phone ||
+      additionalData.mobile_number ||
+      primaryItem.customer_phone ||
+      primaryItem.mobile_number ||
+      '';
+    
+    const customerName =
+      additionalData.customer_name ||
+      primaryItem.customer_name ||
+      apiBooking.user?.name ||
+      apiBooking.customer_name ||
+      'Unknown';
+    
+
     return {
       id: apiBooking.booking_id || apiBooking.id, // Use booking_id for delete/update, fallback to id
       item_id: apiBooking.id, // Store item_id for cancel operations
       uuid: apiBooking.uuid,
       reference: apiBooking.reference,
       customer_id: finalCustomerId,
-      customer_name: additionalData.customer_name || primaryItem.customer_name || 'Unknown',
-      customer_email: apiBooking.customer_email || apiBooking.user?.email,
-      customer_phone: apiBooking.mobile_number || "00000",
+  customer_name: customerName,
+  customer_email:
+    apiBooking.customer_email ||
+    apiBooking.user?.email ||
+    additionalData.customer_email ||
+    '',
+  customer_phone: customerPhone,
       therapist_id: apiBooking.therapist_id || primaryItem.therapist,
       therapist_name: apiBooking.therapist_name || primaryItem.therapist_name,
       service_id: apiBooking.service_id || primaryItem.service,
@@ -90,8 +115,15 @@ export function transformBookingDetailFromApi(apiBooking) {
     console.error('Error transforming booking detail:', error);
     // Fallback to basic data if parsing fails
     return {
-      id: apiBooking.id,
-      customer_name: 'Unknown',
+      id: apiBooking.booking_id || apiBooking.id,
+      customer_name: apiBooking.user?.name || apiBooking.customer_name || 'Unknown',
+      customer_email: apiBooking.customer_email || apiBooking.user?.email || '',
+      customer_phone:
+        apiBooking.mobile_number ||
+        apiBooking.contact_number ||
+        apiBooking.user?.contact_number ||
+        apiBooking.user?.mobile_number ||
+        '',
       service_name: apiBooking.service_name,
       date: apiBooking.service_date,
       status: 'Confirmed',

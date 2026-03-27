@@ -1,5 +1,5 @@
 // Date utility functions — API uses DD-MM-YYYY format, not ISO
-import { format, parse, isToday, isSameDay } from 'date-fns';
+import { format, parse, isToday, isSameDay, isBefore, startOfDay } from 'date-fns';
 
 const API_DATE_FORMAT = 'dd-MM-yyyy';
 const API_DATETIME_FORMAT = 'dd-MM-yyyy HH:mm:ss';
@@ -195,4 +195,55 @@ export function getDateNDaysAgo(days) {
   const pastDate = new Date();
   pastDate.setDate(pastDate.getDate() - days);
   return toApiDate(pastDate);
+}
+/**
+ * Check if API/HTML date is before today
+ */
+export function isPastDate(date) {
+  if (!date) return false;
+
+  let parsedDate = null;
+
+  if (typeof date === 'string') {
+    // Support both HTML format (YYYY-MM-DD) and API format (DD-MM-YYYY)
+    if (date.split('-')[0]?.length === 4) {
+      parsedDate = new Date(date);
+    } else {
+      parsedDate = parseApiDate(date);
+    }
+  } else {
+    parsedDate = new Date(date);
+  }
+
+  if (!parsedDate || Number.isNaN(parsedDate.getTime())) return false;
+
+  return isBefore(startOfDay(parsedDate), startOfDay(new Date()));
+}
+
+/**
+ * For create flow:
+ * only allow today or future dates
+ */
+export function isValidCreateBookingDate(date) {
+  if (!date) return false;
+  return !isPastDate(date);
+}
+
+/**
+ * For edit flow:
+ * allow past dates because existing bookings may belong to previous days
+ */
+export function isValidEditBookingDate(date) {
+  if (!date) return false;
+  return true;
+}
+
+/**
+ * Return min date for HTML date input depending on mode
+ * create -> today
+ * edit   -> no restriction
+ */
+export function getBookingMinHtmlDate(mode = 'create') {
+  if (mode === 'edit') return '';
+  return apiDateToHtmlDate(getTodayApiDate());
 }

@@ -95,6 +95,15 @@ const BookingDetail = ({ booking, onClose }) => {
     setShowModal(false);
   };
   console.log(booking, "fetchedBooking")
+  
+  const customerPhone =
+  booking.customer_phone ||
+  booking.mobile_number ||
+  booking.contact_number ||
+  booking.user?.contact_number ||
+  booking.user?.mobile_number ||
+  booking.user?.phone ||
+  '';
 
   return (
     <div className="space-y-6 divide-y divide-gray-200">
@@ -112,12 +121,12 @@ const BookingDetail = ({ booking, onClose }) => {
               <p className="text-sm font-medium text-gray-900 mt-1">{booking.customer_email}</p>
             </div>
           )}
-          {booking.customer_phone && (
-            <div>
-              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Phone</p>
-              <p className="text-sm font-medium text-gray-900 mt-1">{booking.customer_phone}</p>
-            </div>
-          )}
+         {customerPhone && (
+  <div>
+    <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Phone</p>
+    <p className="text-sm font-medium text-gray-900 mt-1">{customerPhone}</p>
+  </div>
+)}
         </div>
       </div>
 
