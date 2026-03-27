@@ -1,6 +1,5 @@
 import React, { useCallback } from 'react';
 import { getTimeFromSlotIndex, SLOT_HEIGHT } from '../../utils/timeUtils';
-import { toApiDate } from '../../utils/dateUtils';
 import useUI from '../../hooks/useUI';
 import logger from '../../utils/logger';
 
@@ -12,7 +11,7 @@ import logger from '../../utils/logger';
  * DnD handled at column level only
  */
 function EmptySlot({ slotIndex, therapistId, selectedDate, therapistIndex }) {
-  const { openPanel, openModal } = useUI();
+  const { openPanel } = useUI();
 
   const slotTime = getTimeFromSlotIndex(slotIndex);
 
@@ -21,16 +20,33 @@ function EmptySlot({ slotIndex, therapistId, selectedDate, therapistIndex }) {
       slotIndex,
       slotTime,
       therapistId,
+      therapistIndex,
       selectedDate,
     });
 
-    // Open modal to create booking with pre-filled date/time/therapist
-    openModal('createBooking', {
-      date: selectedDate ? toApiDate(selectedDate) : null,
+    // Convert selectedDate to YYYY-MM-DD format for the form
+    let htmlDate = '';
+    if (selectedDate) {
+      if (typeof selectedDate === 'string') {
+        htmlDate = selectedDate; // Already in YYYY-MM-DD format
+      } else if (selectedDate instanceof Date) {
+        const year = selectedDate.getFullYear();
+        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+        const day = String(selectedDate.getDate()).padStart(2, '0');
+        htmlDate = `${year}-${month}-${day}`;
+      }
+    }
+
+    // Open create panel with pre-filled date/time/therapist and click position
+    openPanel('create', null, {
+      date: htmlDate,
       time: slotTime,
       therapist_id: therapistId,
+    }, {
+      slotIndex,
+      therapistIndex,
     });
-  }, [slotIndex, slotTime, therapistId, selectedDate, openModal]);
+  }, [slotIndex, slotTime, therapistId, therapistIndex, selectedDate, openPanel]);
 
   return (
     <div

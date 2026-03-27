@@ -2,8 +2,11 @@ import React, { useMemo } from 'react';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
 import BookingCard from './BookingCard';
 import EmptySlot from './EmptySlot';
+import BookingInProgressSlot from './BookingInProgressSlot';
 import { SLOT_HEIGHT, TOTAL_SLOTS } from '../../utils/timeUtils';
 import logger from '../../utils/logger';
+import { useUI } from '../../hooks/useUI';
+import useMergedTherapists from '../../hooks/useMergedTherapists';
 
 /**
  * TherapistColumn — Single therapist's column
@@ -21,7 +24,21 @@ function TherapistColumn({
   onBookingClick,
   columnWidth = 180,
 }) {
+  const { isPanelOpen, panelMode, panelInitialData, panelClickPosition } = useUI();
+  const therapists = useMergedTherapists();
   const totalHeight = TOTAL_SLOTS * SLOT_HEIGHT;
+
+  // Check if a booking is being created in this column
+  const isBookingInProgressHere =
+    isPanelOpen &&
+    panelMode === 'create' &&
+    panelClickPosition &&
+    panelClickPosition.therapistIndex === therapistIndex;
+
+  // Get the therapist for the booking in progress
+  const selectedTherapist = isBookingInProgressHere
+    ? therapists?.find(t => Number(t.id) === Number(panelInitialData?.therapist_id))
+    : null;
 
   // Filter bookings for this therapist
   // Normalize both IDs to number for safe comparison
@@ -120,6 +137,15 @@ function TherapistColumn({
               onBookingClick={onBookingClick}
             />
           ))}
+
+          {/* Render booking in progress card if creating in this column */}
+          {isBookingInProgressHere && panelClickPosition && (
+            <BookingInProgressSlot
+              slotIndex={panelClickPosition.slotIndex}
+              initialData={panelInitialData}
+              therapist={selectedTherapist}
+            />
+          )}
 
           {/* Drag overlay placeholder */}
           {provided.placeholder}

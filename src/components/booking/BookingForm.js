@@ -12,12 +12,13 @@ import {
   isValidCreateBookingDate,
   isValidEditBookingDate,
 } from '../../utils/dateUtils';
+import { calculateEndTime } from '../../utils/timeUtils';
 import Input from '../common/Input';
 import Select from '../common/Select';
 import Button from '../common/Button';
 import BookingItemRow from './BookingItemRow';
 
-const BookingForm = React.forwardRef(({ booking, onSuccess }, ref) => {
+const BookingForm = React.forwardRef(({ booking, initialData, onSuccess }, ref) => {
   const { createBooking, updateBooking, isSubmitting } = useBookings();
   const { addToast, openModal, closeModal } = useUI();
   const { user } = useAuth();
@@ -61,6 +62,33 @@ useEffect(() => {
     setInitialSnapshot(snapshot);
   }
 }, [booking]);
+
+  // Apply initial data from calendar slot click (for create mode)
+  useEffect(() => {
+    if (initialData && !booking) {
+      logger.debug('BookingForm', 'Applying initial data from calendar slot', {
+        date: initialData.date,
+        time: initialData.time,
+        therapist_id: initialData.therapist_id,
+      });
+
+      // Calculate end time from start time and default duration
+      const endTime = calculateEndTime(initialData.time || '09:00', 60);
+
+      setFormData(prev => ({
+        ...prev,
+        service_at: initialData.date || prev.service_at,
+        items: [
+          {
+            ...prev.items[0],
+            start_time: initialData.time || prev.items[0].start_time,
+            end_time: endTime,
+            therapist_id: initialData.therapist_id || prev.items[0].therapist_id,
+          },
+        ],
+      }));
+    }
+  }, [initialData, booking]);
   // Initialize form with booking data if editing
   useEffect(() => {
     if (booking) {

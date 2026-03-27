@@ -9,6 +9,8 @@ const initialState = {
   isPanelOpen: false,
   panelMode: 'detail', // 'detail' | 'create' | 'edit'
   panelBookingId: null,
+  panelInitialData: null, // Pre-fill data for create panel (date, time, therapist_id)
+  panelClickPosition: null, // Store grid click position (slotIndex, therapistIndex) for positioning the card
   isModalOpen: false,
   modalType: null,
   modalData: null,
@@ -25,10 +27,12 @@ function uiReducer(state, action) {
         isPanelOpen: true,
         panelMode: action.payload.mode || 'detail',
         panelBookingId: action.payload.bookingId || null,
+        panelInitialData: action.payload.initialData || null,
+        panelClickPosition: action.payload.clickPosition || null,
       };
 
     case 'CLOSE_PANEL':
-      return { ...state, isPanelOpen: false, panelMode: 'detail', panelBookingId: null };
+      return { ...state, isPanelOpen: false, panelMode: 'detail', panelBookingId: null, panelInitialData: null, panelClickPosition: null };
 
     case 'OPEN_MODAL':
       return {
@@ -72,9 +76,9 @@ function uiReducer(state, action) {
 export function UIProvider({ children }) {
   const [state, dispatch] = useReducer(uiReducer, initialState);
 
-  const openPanel = useCallback((mode = 'detail', bookingId = null) => {
-    dispatch({ type: 'OPEN_PANEL', payload: { mode, bookingId } });
-    logger.debug('UI', 'Panel opened', { mode, bookingId });
+  const openPanel = useCallback((mode = 'detail', bookingId = null, initialData = null, clickPosition = null) => {
+    dispatch({ type: 'OPEN_PANEL', payload: { mode, bookingId, initialData, clickPosition } });
+    logger.debug('UI', 'Panel opened', { mode, bookingId, hasInitialData: !!initialData });
   }, []);
 
   const closePanel = useCallback(() => {
@@ -125,6 +129,8 @@ export function UIProvider({ children }) {
     isPanelOpen: state.isPanelOpen,
     panelMode: state.panelMode,
     panelBookingId: state.panelBookingId,
+    panelInitialData: state.panelInitialData,
+    panelClickPosition: state.panelClickPosition,
     isModalOpen: state.isModalOpen,
     modalType: state.modalType,
     modalData: state.modalData,

@@ -273,7 +273,7 @@ function CalendarGrid({ selectedDate, onDateChange, onBookingClick, filters = {}
     <DragDropContext onDragEnd={handleDragEnd}>
       <div className="flex flex-col flex-1 bg-white min-h-0 overflow-hidden">
         {/* Main calendar area */}
-        <div className="flex flex-1 overflow-hidden bg-white min-h-0">
+        <div className="flex flex-1 overflow-hidden bg-white min-h-0 relative">
           {/* Scrollable calendar grid (includes TimeGutter + CalendarHeader inside for proper positioning) */}
           <div
             ref={containerRef}
@@ -348,9 +348,10 @@ function CalendarGrid({ selectedDate, onDateChange, onBookingClick, filters = {}
             </div>
             {/* end: virtual grid container */}
           </div>
-          {/* end: flex wrapper (TimeGutter + grid) */}
-          </div>
           {/* end: scrollable container */}
+
+        </div>
+        {/* end: scrollable container */}
         </div>
         {/* end: main calendar area */}
       </div>

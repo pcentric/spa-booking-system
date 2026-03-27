@@ -8,7 +8,7 @@ import BookingForm from '../booking/BookingForm.js';
 
 const RightPanel = () => {
   const formRef = useRef(null);
-  const { isPanelOpen, panelMode, panelBookingId, closePanel } = useUI();
+  const { isPanelOpen, panelMode, panelBookingId, panelInitialData, closePanel } = useUI();
   const { selectedBooking, deleteBooking, cancelBooking } = useBookings();
   const [fetchedBooking, setFetchedBooking] = useState(null);
   const [isLoadingBooking, setIsLoadingBooking] = useState(false);
@@ -127,6 +127,7 @@ const RightPanel = () => {
               <BookingForm
                 ref={formRef}
                 booking={bookingForEdit}
+                initialData={panelMode === 'create' ? panelInitialData : null}
                 onSuccess={handleFormSuccess}
               />
             )}
