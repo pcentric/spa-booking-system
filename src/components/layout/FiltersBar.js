@@ -153,137 +153,159 @@ const FiltersBar = ({ filters = {}, onFiltersChange }) => {
 
   return (
     <>
-      <div className="h-20 bg-white border-b border-gray-200 px-10 py-4 flex items-center justify-between gap-6">
+      <div className="h-20 bg-white border-b border-gray-200 px-6 flex items-center gap-4">
         {/* Left: Outlet Info */}
-        <div className="flex flex-col gap-1">
-          <div className="text-sm font-medium text-gray-900 cursor-pointer hover:text-brand">
+        <div className="flex flex-col gap-0.5 min-w-fit">
+          <div className="text-sm font-bold text-gray-900 cursor-pointer hover:text-brand leading-tight">
             Liat Towers ▾
           </div>
-          <div className="text-xs font-semibold text-gray-900 cursor-pointer hover:text-brand">
+          <div className="text-xs font-semibold text-gray-600 cursor-pointer hover:text-brand leading-tight">
             Display: 15 Min ▾
           </div>
         </div>
 
-        {/* Right: Filters & Controls */}
-        <div className="flex-1 flex items-center gap-4 ml-12">
-          {/* Search with Dropdown */}
-          <div className="flex-1 max-w-xs relative" ref={searchRef}>
-            <div className="relative flex items-center">
-              <input
-                type="text"
-                placeholder="Search Sales by phone/name"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
+        {/* Center: Search with Dropdown */}
+        <div className="flex-1 max-w-md relative" ref={searchRef}>
+          <div className="relative flex items-center">
+            <span className="absolute left-3 text-gray-400 pointer-events-none text-sm">🔍</span>
+            <input
+              type="text"
+              placeholder="Search Sales by phone/name"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setShowSearchResults(true)}
+              onBlur={() => setTimeout(() => setShowSearchResults(false), 200)}
+              className="w-full pl-9 pr-9 py-2 text-sm bg-white border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  const clearedFilters = { ...filters };
+                  delete clearedFilters.selectedTherapists;
+                  if (onFiltersChange) onFiltersChange(clearedFilters);
                 }}
-                onFocus={() => {
-                  setShowSearchResults(true);
-                }}
-                onBlur={() => setTimeout(() => setShowSearchResults(false), 200)}
-                className="w-full px-4 py-2 pr-10 text-sm bg-gray-100 border border-gray-300 rounded text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => {
-                    setSearchQuery('');
-                    const clearedFilters = { ...filters };
-                    delete clearedFilters.selectedTherapists;
-                    if (onFiltersChange) {
-                      onFiltersChange(clearedFilters);
-                    }
-                  }}
-                  className="absolute right-3 text-gray-400 hover:text-gray-600 transition-colors"
-                  title="Clear search"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-
-            {/* Search Results Dropdown */}
-            {showSearchResults && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-50 max-h-96 overflow-y-auto">
-                {!therapists || therapists.length === 0 && (
-                  <div className="px-4 py-6 text-center">
-                    <p className="text-sm text-gray-500">Loading therapists...</p>
-                  </div>
-                )}
-
-                {therapists && filteredResults.length > 0 && (
-                  <>
-                    {/* Results Header */}
-                    <div className="sticky top-0 bg-gray-50 px-4 py-2 border-b border-gray-200">
-                      <p className="text-xs font-semibold text-gray-700">
-                        {searchQuery.trim() ? `Found ${filteredResults.length} therapist${filteredResults.length !== 1 ? 's' : ''}` : `All Therapists (${filteredResults.length})`}
-                      </p>
-                    </div>
-
-                    {/* Therapist List */}
-                    {filteredResults.map((therapist, idx) => {
-                      const isSelected = (filters.selectedTherapists || []).includes(therapist.id);
-                      return (
-                        <div
-                          key={`therapist-${therapist.id || idx}`}
-                          className={`px-4 py-3 border-b border-gray-100 hover:bg-orange-50 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50' : ''}`}
-                          onClick={() => handleSelectTherapist(therapist)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <div className="text-sm font-bold text-gray-900">
-                                {therapist.alias || therapist.name || 'Unknown Therapist'}
-                              </div>
-                              <div className="text-xs text-gray-600 mt-0.5">
-                                {therapist.gender && `(${therapist.gender})`}
-                              </div>
-                            </div>
-                            {isSelected && (
-                              <div className="ml-2 text-blue-600 font-bold">✓</div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </>
-                )}
-
-                {therapists && filteredResults.length === 0 && searchQuery.trim() && (
-                  <div className="px-4 py-6 text-center">
-                    <p className="text-sm text-gray-500">No therapists match "{searchQuery}"</p>
-                    <p className="text-xs text-gray-400 mt-2">Try searching by therapist name</p>
-                  </div>
-                )}
-
-                {therapists && filteredResults.length === 0 && !searchQuery.trim() && (
-                  <div className="px-4 py-6 text-center">
-                    <p className="text-sm text-gray-500">No therapists available</p>
-                  </div>
-                )}
-              </div>
+                className="absolute right-3 text-gray-400 hover:text-gray-600 transition-colors text-xs"
+                title="Clear search"
+              >
+                ✕
+              </button>
             )}
           </div>
 
-          {/* Date Navigation */}
-          <div className="flex items-center gap-2">
+          {/* Search Results Dropdown */}
+          {showSearchResults && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-50 max-h-96 overflow-y-auto">
+              {!therapists || therapists.length === 0 && (
+                <div className="px-4 py-6 text-center">
+                  <p className="text-sm text-gray-500">Loading therapists...</p>
+                </div>
+              )}
+              {therapists && filteredResults.length > 0 && (
+                <>
+                  <div className="sticky top-0 bg-gray-50 px-4 py-2 border-b border-gray-200">
+                    <p className="text-xs font-semibold text-gray-700">
+                      {searchQuery.trim() ? `Found ${filteredResults.length} therapist${filteredResults.length !== 1 ? 's' : ''}` : `All Therapists (${filteredResults.length})`}
+                    </p>
+                  </div>
+                  {filteredResults.map((therapist, idx) => {
+                    const isSelected = (filters.selectedTherapists || []).includes(therapist.id);
+                    return (
+                      <div
+                        key={`therapist-${therapist.id || idx}`}
+                        className={`px-4 py-3 border-b border-gray-100 hover:bg-orange-50 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50' : ''}`}
+                        onClick={() => handleSelectTherapist(therapist)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="text-sm font-bold text-gray-900">
+                              {therapist.alias || therapist.name || 'Unknown Therapist'}
+                            </div>
+                            <div className="text-xs text-gray-600 mt-0.5">
+                              {therapist.gender && `(${therapist.gender})`}
+                            </div>
+                          </div>
+                          {isSelected && <div className="ml-2 text-blue-600 font-bold">✓</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+              {therapists && filteredResults.length === 0 && searchQuery.trim() && (
+                <div className="px-4 py-6 text-center">
+                  <p className="text-sm text-gray-500">No therapists match "{searchQuery}"</p>
+                  <p className="text-xs text-gray-400 mt-2">Try searching by therapist name</p>
+                </div>
+              )}
+              {therapists && filteredResults.length === 0 && !searchQuery.trim() && (
+                <div className="px-4 py-6 text-center">
+                  <p className="text-sm text-gray-500">No therapists available</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Right: Controls */}
+        <div className="flex items-center gap-2 ml-auto">
+
+          {/* Filter Button */}
+          <button
+            onClick={() => setIsFilterModalOpen(true)}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold border rounded-md transition-colors relative ${
+              isFilterActive()
+                ? 'bg-brand-orange text-white border-brand-orange hover:bg-brand-orange/90'
+                : 'text-gray-800 border-gray-300 bg-white hover:bg-gray-50'
+            }`}
+          >
+            Filter
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="8" y2="18"/>
+            </svg>
+            {isFilterActive() && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-white border-2 border-brand-orange rounded-full"></span>
+            )}
+          </button>
+
+          {/* Today + Date Nav + Calendar — grouped */}
+          <div className="flex items-center border border-gray-300 rounded-md overflow-hidden bg-white">
+            <button
+              onClick={handleTodayClick}
+              className="px-3 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 transition-colors border-r border-gray-300"
+            >
+              Today
+            </button>
             <button
               onClick={handlePreviousDay}
-              className="p-2 hover:bg-gray-100 rounded transition-colors"
+              className="px-2 py-2 text-gray-500 hover:bg-gray-50 transition-colors text-lg leading-none"
               title="Previous day"
             >
               ‹
             </button>
-            <div className="text-sm font-semibold text-gray-900 min-w-[120px] text-center">
+            <span className="px-3 py-2 text-sm font-semibold text-gray-800 min-w-[110px] text-center select-none">
               {formatDateDisplay(selectedDate)}
-            </div>
+            </span>
             <button
               onClick={handleNextDay}
-              className="p-2 hover:bg-gray-100 rounded transition-colors"
+              className="px-2 py-2 text-gray-500 hover:bg-gray-50 transition-colors text-lg leading-none"
               title="Next day"
             >
               ›
             </button>
+            <div className="w-px bg-gray-300 h-8 self-center" />
+            <button
+              onClick={() => dateInputRef.current?.click()}
+              className="px-3 py-2 text-gray-500 hover:bg-gray-50 transition-colors"
+              title="Open calendar"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+            </button>
           </div>
 
-          {/* Calendar Icon - Hidden input reference */}
+          {/* Hidden date input */}
           <input
             ref={dateInputRef}
             type="date"
@@ -291,37 +313,6 @@ const FiltersBar = ({ filters = {}, onFiltersChange }) => {
             onChange={handleDateChange}
             className="hidden"
           />
-
-          <button
-            onClick={() => dateInputRef.current?.click()}
-            className="p-2 hover:bg-gray-100 rounded transition-colors text-gray-600"
-            title="Open calendar"
-          >
-            📅
-          </button>
-
-          {/* Today Button */}
-          <button
-            onClick={handleTodayClick}
-            className="text-sm font-semibold text-gray-900 hover:text-brand transition-colors"
-          >
-            Today
-          </button>
-
-          {/* Filter Button */}
-          <button
-            onClick={() => setIsFilterModalOpen(true)}
-            className={`px-4 py-2 text-sm font-semibold rounded transition-colors relative ${
-              isFilterActive()
-                ? 'bg-brand-orange text-white border border-brand-orange hover:bg-brand-orange/90'
-                : 'text-brand-orange border border-brand-orange hover:bg-brand-orange/10'
-            }`}
-          >
-            ⚙ Filter
-            {isFilterActive() && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-white rounded-full"></span>
-            )}
-          </button>
         </div>
       </div>
 

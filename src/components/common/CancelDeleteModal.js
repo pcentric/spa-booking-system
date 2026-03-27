@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import logger from '../../utils/logger';
 
 /**
@@ -7,8 +7,14 @@ import logger from '../../utils/logger';
  * 1. Normal Cancellation (marks as cancelled)
  * 2. Just Delete It (removes booking entirely)
  */
-const CancelDeleteModal = ({ isOpen, bookingId, onCancel, onConfirm, isLoading }) => {
-  const [selectedOption, setSelectedOption] = useState('cancel'); // 'cancel' or 'delete'
+const CancelDeleteModal = ({ isOpen, bookingId, bookingStatus, onCancel, onConfirm, isLoading }) => {
+  const normalizedStatus = String(bookingStatus || '').trim().toLowerCase();
+const isCancelled =
+  normalizedStatus === 'cancelled' || normalizedStatus === 'canceled';
+
+const [selectedOption, setSelectedOption] = useState(
+  isCancelled ? 'delete' : 'cancel'
+);
   const [step, setStep] = useState(1); // Step 1: choose option, Step 2: confirm
 
   const handleNext = () => {
@@ -26,11 +32,17 @@ const CancelDeleteModal = ({ isOpen, bookingId, onCancel, onConfirm, isLoading }
   };
 
   const handleCancel = () => {
-    logger.debug('CancelDeleteModal', 'Cancelled by user');
     setStep(1);
-    setSelectedOption('cancel');
+    setSelectedOption(isCancelled ? 'delete' : 'cancel');
     onCancel();
   };
+
+  useEffect(() => {
+    if (isCancelled) {
+      setStep(2);
+      setSelectedOption('delete');
+    }
+  }, [isCancelled]);
 
   if (!isOpen) return null;
 
@@ -39,9 +51,13 @@ const CancelDeleteModal = ({ isOpen, bookingId, onCancel, onConfirm, isLoading }
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
         {/* Modal Header */}
         <div className="border-b border-gray-200 px-6 py-4">
-          <h2 className="text-lg font-bold text-gray-900">
-            {step === 1 ? 'Cancel / Delete Booking' : 'Confirm Action'}
-          </h2>
+        <h2 className="text-lg font-bold text-gray-900">
+  {step === 1
+    ? isCancelled
+      ? 'Delete Booking'
+      : 'Cancel / Delete Booking'
+    : 'Confirm Action'}
+</h2>
         </div>
 
         {/* Modal Body */}
@@ -51,24 +67,26 @@ const CancelDeleteModal = ({ isOpen, bookingId, onCancel, onConfirm, isLoading }
               <p className="text-sm text-gray-600 mb-4">Please select the cancellation type.</p>
 
               {/* Option 1: Normal Cancellation */}
-              <div className="mb-4">
-                <label className="flex items-start cursor-pointer">
-                  <input
-                    type="radio"
-                    name="cancellation"
-                    value="cancel"
-                    checked={selectedOption === 'cancel'}
-                    onChange={(e) => setSelectedOption(e.target.value)}
-                    className="mt-1"
-                  />
-                  <span className="ml-3">
-                    <span className="text-sm font-medium text-gray-900">Normal Cancellation</span>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Booking will be marked as cancelled and kept in history
-                    </p>
-                  </span>
-                </label>
-              </div>
+{!isCancelled && (
+  <div className="mb-4">
+    <label className="flex items-start cursor-pointer">
+      <input
+        type="radio"
+        name="cancellation"
+        value="cancel"
+        checked={selectedOption === 'cancel'}
+        onChange={(e) => setSelectedOption(e.target.value)}
+        className="mt-1"
+      />
+      <span className="ml-3">
+        <span className="text-sm font-medium text-gray-900">Normal Cancellation</span>
+        <p className="text-xs text-gray-500 mt-1">
+          Booking will be marked as cancelled and kept in history
+        </p>
+      </span>
+    </label>
+  </div>
+)}
 
               {/* Option 2: Just Delete It */}
               <div className="mb-4">

@@ -317,8 +317,17 @@ export function BookingProvider({ children }) {
         throw new Error('No booking data returned from API update');
       }
 
-      const transformed = transformBookingFromApi(apiBooking);
+      let transformed = transformBookingFromApi(apiBooking);
 
+      // 🔥 Fallback: if transform fails, use existing booking
+      if (!transformed || !transformed.id) {
+        console.warn('⚠️ Transform failed, using current booking as fallback');
+      
+        transformed = {
+          ...currentBooking,
+          ...bookingData, // optional merge if needed
+        };
+      }
       if (!transformed || !transformed.id) {
         logger.error('Booking', 'Failed to transform API response', { apiBooking });
         throw new Error('Failed to transform booking data from API response');

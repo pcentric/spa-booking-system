@@ -95,7 +95,7 @@ const BookingDetail = ({ booking, onClose }) => {
     setShowModal(false);
   };
   console.log(booking, "fetchedBooking")
-  
+
   const customerPhone =
   booking.customer_phone ||
   booking.mobile_number ||
@@ -104,6 +104,21 @@ const BookingDetail = ({ booking, onClose }) => {
   booking.user?.mobile_number ||
   booking.user?.phone ||
   '';
+
+  const rawStatus =
+  booking.status ||
+  booking.booking_status ||
+  booking.status_name ||
+  '';
+
+const normalizedStatus = String(rawStatus).trim().toLowerCase();
+
+const isCancelled =
+  normalizedStatus === 'cancelled' ||
+  normalizedStatus === 'canceled' ||
+  normalizedStatus === 'cancel';
+
+const displayStatus = rawStatus || 'Unknown';
 
   return (
     <div className="space-y-6 divide-y divide-gray-200">
@@ -220,25 +235,34 @@ const BookingDetail = ({ booking, onClose }) => {
         >
           Edit Booking
         </button>
-        {booking.status !== 'Cancelled' && (
-          <button
-            onClick={handleDeleteOrCancel}
-            className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isDeleting || isCancelling}
-          >
-            {isDeleting || isCancelling ? 'Processing...' : 'Cancel / Delete'}
-          </button>
-        )}
+        {!isCancelled ? (
+  <button
+    onClick={handleDeleteOrCancel}
+    className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+    disabled={isDeleting || isCancelling}
+  >
+    {isDeleting || isCancelling ? 'Processing...' : 'Cancel / Delete'}
+  </button>
+) : (
+  <button
+    onClick={handleDeleteOrCancel}
+    className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+    disabled={isDeleting}
+  >
+    {isDeleting ? 'Deleting...' : 'Delete Booking'}
+  </button>
+)}
       </div>
 
-      {/* Cancel/Delete Modal */}
-      <CancelDeleteModal
-        isOpen={showModal}
-        bookingId={booking.id}
-        onCancel={handleModalCancel}
-        onConfirm={handleModalConfirm}
-        isLoading={isDeleting || isCancelling}
-      />
+    {/* Cancel/Delete Modal */}
+<CancelDeleteModal
+  isOpen={showModal}
+  bookingId={booking.id}
+  bookingStatus={booking.status}
+  onCancel={handleModalCancel}
+  onConfirm={handleModalConfirm}
+  isLoading={isDeleting || isCancelling}
+/>
     </div>
   );
 };

@@ -76,7 +76,24 @@ export function transformBookingDetailFromApi(apiBooking) {
       apiBooking.user?.name ||
       apiBooking.customer_name ||
       'Unknown';
-    
+      const rawStatus = apiBooking.status;
+      const hasCancelledAt = !!apiBooking.cancelled_at;
+      const hasCancelReason = !!apiBooking.cancel_reason || !!apiBooking.cancel_remark;
+      
+      let normalizedStatus = 'Confirmed';
+      
+      if (hasCancelledAt || hasCancelReason) {
+        normalizedStatus = 'Cancelled';
+      } else if (typeof rawStatus === 'number') {
+        if (rawStatus === 3) normalizedStatus = 'Cancelled';
+        else if (rawStatus === 1) normalizedStatus = 'Confirmed';
+      } else if (typeof rawStatus === 'string') {
+        const lower = rawStatus.trim().toLowerCase();
+      
+        if (lower.includes('cancel')) normalizedStatus = 'Cancelled';
+        else if (lower.includes('confirm')) normalizedStatus = 'Confirmed';
+      }
+      
 
     return {
       id: apiBooking.booking_id || apiBooking.id, // Use booking_id for delete/update, fallback to id
@@ -91,17 +108,35 @@ export function transformBookingDetailFromApi(apiBooking) {
     additionalData.customer_email ||
     '',
   customer_phone: customerPhone,
-      therapist_id: apiBooking.therapist_id || primaryItem.therapist,
-      therapist_name: apiBooking.therapist_name || primaryItem.therapist_name,
-      service_id: apiBooking.service_id || primaryItem.service,
-      service_name: apiBooking.service_name,
+  therapist_id:
+  apiBooking.therapist_id ||
+  primaryItem.therapist_id ||
+  null,
+
+therapist_name:
+  apiBooking.therapist_name ||
+  primaryItem.therapist_name ||
+  primaryItem.therapist ||
+  '',
+
+service_id:
+  apiBooking.service_id ||
+  primaryItem.service_id ||
+  null,
+
+service_name:
+  apiBooking.service_name ||
+  primaryItem.service_name ||
+  primaryItem.service ||
+  '',
       start_time: startTime,
       end_time: endTime,
       duration,
       date: apiBooking.service_date, // DD-MM-YYYY format
       room_id: apiBooking.room_id,
       room_name: apiBooking.room_name,
-      status: apiBooking.status === 1 ? 'Confirmed' : apiBooking.status === 3 ? 'Cancelled' : 'Confirmed',
+      status: normalizedStatus,
+
       payment_status: apiBooking.payment_status_id === 1 ? 'Unpaid' : 'Paid',
       source: apiBooking.source,
       notes: apiBooking.remark || apiBooking.sales_note,
@@ -136,9 +171,19 @@ export function transformBookingFromApi(apiBooking) {
 
   try {
     // ✅ unwrap create-booking response shape: { booking: {...}, id: undefined }
-    const bookingData = apiBooking.booking && typeof apiBooking.booking === 'object'
-      ? apiBooking.booking
-      : apiBooking;
+    let bookingData = apiBooking;
+
+    if (apiBooking?.data?.booking && typeof apiBooking.data.booking === 'object') {
+      bookingData = {
+        ...apiBooking.data.booking,
+        id: apiBooking.data.id || apiBooking.data.booking.id || apiBooking.data.booking.booking_id,
+      };
+    } else if (apiBooking?.booking && typeof apiBooking.booking === 'object') {
+      bookingData = {
+        ...apiBooking.booking,
+        id: apiBooking.id || apiBooking.booking.id || apiBooking.booking.booking_id,
+      };
+    }
 
     let items = [];
     let customerNameFromBookingItem = null;
@@ -194,13 +239,22 @@ export function transformBookingFromApi(apiBooking) {
     }
 
     if (!items[0]) {
-      console.error('transformBookingFromApi: No valid items found after all attempts', {
-        hasBookingItem: !!bookingData.booking_item,
-        hasServiceId: !!bookingData.service_id,
-        hasItems: !!bookingData.items,
-        bookingKeys: Object.keys(bookingData).slice(0, 10),
-      });
-      return null;
+      console.warn('⚠️ No items found, using fallback from bookingData');
+    
+      const fallbackItem = {
+        therapist_id: bookingData.therapist_id,
+        therapist: bookingData.therapist_name,
+        service_id: bookingData.service_id,
+        service: bookingData.service_name,
+        start_time: bookingData.service_time || '',
+        end_time: bookingData.service_end || '',
+        duration: bookingData.duration || 60,
+        room_items: bookingData.room_id
+          ? [{ room_id: bookingData.room_id, room_name: bookingData.room_name }]
+          : [],
+      };
+    
+      items = [fallbackItem];
     }
 
     const primaryRoom = items[0].room_items?.[0];
@@ -210,7 +264,22 @@ export function transformBookingFromApi(apiBooking) {
       customerNameFromBookingItem ||
       bookingData.user?.name ||
       'Unknown';
-
+      const rawStatus = bookingData.status;
+      const hasCancelledAt = !!bookingData.cancelled_at;
+      const hasCancelReason = !!bookingData.cancel_reason || !!bookingData.cancel_remark;
+      
+      let normalizedStatus = 'Confirmed';
+      
+      if (hasCancelledAt || hasCancelReason) {
+        normalizedStatus = 'Cancelled';
+      } else if (typeof rawStatus === 'number') {
+        if (rawStatus === 3) normalizedStatus = 'Cancelled';
+        else if (rawStatus === 1) normalizedStatus = 'Confirmed';
+      } else if (typeof rawStatus === 'string') {
+        const lower = rawStatus.trim().toLowerCase();
+        if (lower.includes('cancel')) normalizedStatus = 'Cancelled';
+        else if (lower.includes('confirm')) normalizedStatus = 'Confirmed';
+      }
     const transformedBooking = {
       id: bookingData.booking_id || bookingData.id,
       item_id: bookingData.id,
@@ -228,7 +297,7 @@ export function transformBookingFromApi(apiBooking) {
       date: bookingData.service_date,
       room_id: primaryRoom?.room_id,
       room_name: primaryRoom?.room_name,
-      status: bookingData.status || 'Confirmed',
+      status: normalizedStatus,
       payment_status: bookingData.payment_type,
       source: bookingData.source,
       notes: bookingData.notes || bookingData.note,

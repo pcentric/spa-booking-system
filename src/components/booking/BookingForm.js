@@ -21,6 +21,7 @@ const BookingForm = React.forwardRef(({ booking, onSuccess }, ref) => {
   const { createBooking, updateBooking, isSubmitting } = useBookings();
   const { addToast, openModal, closeModal } = useUI();
   const { user } = useAuth();
+  const [initialSnapshot, setInitialSnapshot] = useState('');
 
   const [formData, setFormData] = useState({
     customer_name: '',
@@ -44,6 +45,22 @@ const BookingForm = React.forwardRef(({ booking, onSuccess }, ref) => {
   const [errors, setErrors] = useState({});
   const [itemErrors, setItemErrors] = useState({});
 
+useEffect(() => {
+  if (booking) {
+    const snapshot = JSON.stringify({
+      customer_name: booking.customer_name,
+      customer_phone: booking.customer_phone,
+      service_at: booking.date,
+      items: booking.items?.map(i => ({
+        service_id: i.service_id,
+        therapist_id: i.therapist_id,
+        start_time: i.start_time,
+      })),
+    });
+
+    setInitialSnapshot(snapshot);
+  }
+}, [booking]);
   // Initialize form with booking data if editing
   useEffect(() => {
     if (booking) {
@@ -82,6 +99,8 @@ const BookingForm = React.forwardRef(({ booking, onSuccess }, ref) => {
         payment_type: booking.payment_type || 'payatstore',
         items,
         notes: booking.notes || '',
+        service_id: booking.service_id,
+  therapist_id: booking.therapist_id,
       });
     }
   }, [booking]);
@@ -140,6 +159,10 @@ const BookingForm = React.forwardRef(({ booking, onSuccess }, ref) => {
   };
 
   const handleSubmit = async (e) => {
+    if (booking && !isDirty) {
+      addToast('No changes detected', 'info');
+      return;
+    }
     e.preventDefault();
     logger.debug('BookingForm', 'Form submitted', { isEditing: !!booking });
     const isEditing = !!booking;
@@ -293,6 +316,19 @@ const BookingForm = React.forwardRef(({ booking, onSuccess }, ref) => {
     { value: 'cash', label: 'Cash' },
   ];
 
+  const currentSnapshot = JSON.stringify({
+    customer_name: formData.customer_name,
+    customer_phone: formData.customer_phone,
+    service_at: formData.service_at,
+    items: formData.items?.map(i => ({
+      service_id: i.service_id,
+      therapist_id: i.therapist_id,
+      start_time: i.start_time,
+    })),
+  });
+  
+  const isDirty = !booking || currentSnapshot !== initialSnapshot;
+
   return (
     <form ref={ref} onSubmit={handleSubmit} className="space-y-6">
       {/* Customer Information */}
@@ -412,9 +448,9 @@ const BookingForm = React.forwardRef(({ booking, onSuccess }, ref) => {
 
       {/* Submit Buttons */}
       <div className="space-y-2 pt-4">
-        <button
-          type="submit"
-          disabled={isSubmitting}
+      <button
+  type="submit"
+  disabled={isSubmitting || (booking && !isDirty)}
           className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSubmitting ? 'Saving...' : (booking ? 'Update Booking' : 'Create Booking')}
