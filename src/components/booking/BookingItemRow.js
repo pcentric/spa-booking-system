@@ -8,17 +8,24 @@ import RoomSelector from './RoomSelector';
 import TimeSlotPicker from './TimeSlotPicker';
 import Input from '../common/Input';
 
-const BookingItemRow = ({ item, itemIndex, date, onUpdate, onRemove, error }) => {
+const BookingItemRow = ({ item, itemIndex, date, onUpdate, onRemove, error, therapists = [] }) => {
   // Extract field-level errors from error object if it's an object
   const fieldErrors = (error && typeof error === 'object') ? error : {};
   const errorMessage = (error && typeof error === 'string') ? error : '';
 
+  // Get selected therapist info for display
+  const selectedTherapist = item.therapist_id
+    ? therapists.find(t => Number(t.id) === Number(item.therapist_id))
+    : null;
+
   const handleServiceChange = (e) => {
     const serviceId = e.target.value ? parseInt(e.target.value) : '';
+    // Keep pre-selected therapist if it exists, otherwise reset
     const updatedItem = {
       ...item,
       service_id: serviceId,
-      therapist_id: '', // Reset therapist when service changes
+      // Only reset therapist if none was pre-selected
+      therapist_id: item.therapist_id || '',
     };
     onUpdate(itemIndex, updatedItem);
     logger.debug('BookingItemRow', 'Service changed', { index: itemIndex, serviceId });
@@ -107,6 +114,43 @@ const BookingItemRow = ({ item, itemIndex, date, onUpdate, onRemove, error }) =>
       </div>
 
       <div className="space-y-3">
+        {/* Show selected therapist badge if pre-selected from grid click */}
+        {item.therapist_id && !item.service_id && selectedTherapist && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Therapist Selected</p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-bold text-gray-900">
+                {selectedTherapist.alias || selectedTherapist.name}
+              </p>
+              <button
+                type="button"
+                onClick={() => handleTherapistChange(null)}
+                className="text-xs text-blue-600 hover:text-blue-700 font-semibold"
+              >
+                Change
+              </button>
+            </div>
+            {selectedTherapist.gender && (
+              <p className="text-xs text-gray-600 mt-1">({selectedTherapist.gender})</p>
+            )}
+            <p className="text-xs text-gray-600 mt-2">
+              Now select a service available with this therapist
+            </p>
+          </div>
+        )}
+
+        {/* Therapist Selection - Show full selector if no service selected yet but want to change */}
+        {item.therapist_id && !item.service_id && !selectedTherapist && date && (
+          <TherapistSelector
+            serviceId={item.service_id}
+            serviceAt={getServiceAtDateTime()}
+            value={item.therapist_id}
+            onChange={handleTherapistChange}
+            label="Therapist"
+            error={fieldErrors.therapist_id}
+          />
+        )}
+
         {/* Service Selection */}
         <ServiceSelector
           value={item.service_id}
@@ -115,7 +159,7 @@ const BookingItemRow = ({ item, itemIndex, date, onUpdate, onRemove, error }) =>
           error={fieldErrors.service_id}
         />
 
-        {/* Therapist Selection */}
+        {/* Therapist Selection - Show after service is selected or to change selection */}
         {item.service_id && date && (
           <TherapistSelector
             serviceId={item.service_id}

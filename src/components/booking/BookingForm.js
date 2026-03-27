@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useBookings } from '../../hooks/useBookings';
 import { useUI } from '../../hooks/useUI';
 import { useAuth } from '../../hooks/useAuth';
+import useMergedTherapists from '../../hooks/useMergedTherapists';
 import logger from '../../utils/logger';
 import { validateBookingForm, getErrorMessages } from '../../utils/validators';
 import { transformBookingToApi, transformEditToApi, transformItemToApi } from '../../utils/bookingTransform';
@@ -22,6 +23,7 @@ const BookingForm = React.forwardRef(({ booking, initialData, onSuccess }, ref) 
   const { createBooking, updateBooking, isSubmitting } = useBookings();
   const { addToast, openModal, closeModal } = useUI();
   const { user } = useAuth();
+  const therapists = useMergedTherapists();
   const [initialSnapshot, setInitialSnapshot] = useState('');
 
   const [formData, setFormData] = useState({
@@ -451,6 +453,7 @@ useEffect(() => {
               onUpdate={handleItemUpdate}
               onRemove={handleItemRemove}
               error={itemErrors[index]}
+              therapists={therapists}
             />
           ))}
           {errors.items && typeof errors.items === 'string' && (
