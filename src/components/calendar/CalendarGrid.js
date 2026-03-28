@@ -301,7 +301,7 @@ function CalendarGrid({ selectedDate, onDateChange, onBookingClick, filters = {}
               <div className="flex-shrink-0 bg-white border-r border-b border-gray-300" style={{ width: '60px', height: '60px' }} />
 
               {/* CalendarHeader - now inside scroll container with sticky top-0 */}
-              <div className="flex-1 sticky top-0 z-20 bg-white border-b border-gray-300" style={{ width: `${totalWidth}px` }}>
+              <div className="flex-1 sticky top-0 z-20 bg-white border-b border-gray-300 overflow-hidden" style={{ width: `${totalWidth}px` }}>
                 <CalendarHeader
                   containerRef={containerRef}
                   virtualGrid={virtualGrid}

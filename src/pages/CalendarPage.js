@@ -121,7 +121,11 @@ const CalendarPage = ({ filters = {} }) => {
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Calendar Grid — scrollable, takes remaining space */}
-      <div className="flex-1 overflow-auto min-h-0">
+      {/* overflow-hidden (not overflow-auto) so CalendarGrid's own containerRef is the sole scroll container.
+          flex flex-col gives CalendarGrid a proper flex parent so its flex-1 is bounded by the viewport height,
+          preventing the wrapper from growing to natural content height (~2460px) and spawning a competing
+          vertical scrollbar that would steal ~15px of horizontal width and let the grid scroll past the last column. */}
+      <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
         <CalendarGrid
           selectedDate={selectedDate}
           onDateChange={handleDateChange}
