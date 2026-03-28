@@ -17,6 +17,7 @@ const initialState = {
   toasts: [], // [{ id, message, type: 'success'|'error'|'info', ttl: ms }]
   selectedDate: new Date(),
   sidebarCollapsed: false,
+  refreshKey: 0, // incremented by triggerRefresh() to force a data reload even when date hasn't changed
 };
 
 function uiReducer(state, action) {
@@ -68,6 +69,9 @@ function uiReducer(state, action) {
     case 'SET_SIDEBAR':
       return { ...state, sidebarCollapsed: action.payload };
 
+    case 'TRIGGER_REFRESH':
+      return { ...state, refreshKey: state.refreshKey + 1 };
+
     default:
       return state;
   }
@@ -117,6 +121,10 @@ export function UIProvider({ children }) {
     dispatch({ type: 'SET_SELECTED_DATE', payload: dateObj });
   }, []);
 
+  const triggerRefresh = useCallback(() => {
+    dispatch({ type: 'TRIGGER_REFRESH' });
+  }, []);
+
   const toggleSidebar = useCallback(() => {
     dispatch({ type: 'TOGGLE_SIDEBAR' });
   }, []);
@@ -137,6 +145,7 @@ export function UIProvider({ children }) {
     toasts: state.toasts,
     selectedDate: state.selectedDate,
     sidebarCollapsed: state.sidebarCollapsed,
+    refreshKey: state.refreshKey,
     openPanel,
     closePanel,
     openModal,
@@ -146,6 +155,7 @@ export function UIProvider({ children }) {
     setSelectedDate,
     toggleSidebar,
     setSidebar,
+    triggerRefresh,
   };
 
   return <UIContext.Provider value={value}>{children}</UIContext.Provider>;

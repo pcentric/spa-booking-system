@@ -8,8 +8,8 @@ import logger from '../utils/logger';
 import { toApiDate } from '../utils/dateUtils';
 
 const CalendarPage = ({ filters = {} }) => {
-  const { selectedDate, setSelectedDate, openPanel } = useUI();
-  const { bookings, fetchBatch, batchPage, totalBatches, setSelectedBooking, pagination, isLoading, loadingProgress } = useBookings();
+  const { selectedDate, setSelectedDate, openPanel, refreshKey } = useUI();
+  const { bookings, fetchPage, setSelectedBooking, pagination, isLoading, isPageLoading } = useBookings();
   const { loadTherapists, loadRooms } = useMasterData();
 
   // Store date range for batch navigation
@@ -18,15 +18,16 @@ const CalendarPage = ({ filters = {} }) => {
   // Guard against double-fetching: track the date range we last fetched
   // If date range hasn't changed, don't re-fetch (prevents API hammering on re-renders)
   const lastFetchedRef = useRef({ startDate: null, endDate: null });
+  const prevRefreshKeyRef = useRef(refreshKey);
 
   // Load bookings and therapists when date changes
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Ensure selectedDate is a Date object
+        // Ensure selectedDate is a Date object — always clone to avoid mutating UIContext state
         let d;
         if (selectedDate instanceof Date) {
-          d = selectedDate;
+          d = new Date(selectedDate); // clone — do NOT mutate the original
         } else if (typeof selectedDate === 'string') {
           // Parse string date (YYYY-MM-DD format)
           const [year, month, day] = selectedDate.split('-');
@@ -65,10 +66,14 @@ const CalendarPage = ({ filters = {} }) => {
 
         logger.debug('CalendarPage', 'Loading data', { startDate, endDate, serviceAt });
 
-        // Guard: don't re-fetch if date range hasn't changed
+        // Check if this is a forced refresh (Today button clicked)
+        const isForceRefresh = refreshKey !== prevRefreshKeyRef.current;
+        prevRefreshKeyRef.current = refreshKey;
+
+        // Guard: don't re-fetch if date range hasn't changed (unless forced)
         // This prevents API hammering when component re-renders but data hasn't changed
         const lastFetched = lastFetchedRef.current;
-        if (lastFetched.startDate === startDate && lastFetched.endDate === endDate) {
+        if (!isForceRefresh && lastFetched.startDate === startDate && lastFetched.endDate === endDate) {
           logger.debug('CalendarPage', 'Date range unchanged, skipping fetch');
           return;
         }
@@ -77,10 +82,9 @@ const CalendarPage = ({ filters = {} }) => {
         lastFetchedRef.current = { startDate, endDate };
         dateRangeRef.current = { startDate, endDate };
 
-        // Fetch bookings and therapists in parallel
-        // Use batch page 1 when date range changes
+        // Fetch page 1 (isFirstLoad=true clears map + shows skeleton) + therapists in parallel
         await Promise.all([
-          fetchBatch(startDate, endDate, 1),
+          fetchPage(startDate, endDate, 1, 1, true),
           loadTherapists(serviceAt),
         ]);
 
@@ -92,7 +96,7 @@ const CalendarPage = ({ filters = {} }) => {
     };
 
     loadData();
-  }, [selectedDate, fetchBatch, loadTherapists, loadRooms]);
+  }, [selectedDate, refreshKey, fetchPage, loadTherapists, loadRooms]);
 
   const handleBookingClick = (bookingId) => {
     logger.debug('CalendarPage', 'Booking clicked', { bookingId });
@@ -104,19 +108,19 @@ const CalendarPage = ({ filters = {} }) => {
     setSelectedDate(newDate);
   };
 
-  const handleNextBatch = useCallback(() => {
+  const handleNextPage = useCallback(() => {
     const { startDate, endDate } = dateRangeRef.current;
-    if (startDate && endDate && batchPage < totalBatches) {
-      fetchBatch(startDate, endDate, batchPage + 1);
+    if (startDate && endDate && pagination.currentPage < pagination.lastPage) {
+      fetchPage(startDate, endDate, pagination.currentPage + 1);
     }
-  }, [fetchBatch, batchPage, totalBatches]);
+  }, [fetchPage, pagination.currentPage, pagination.lastPage]);
 
-  const handlePrevBatch = useCallback(() => {
+  const handlePrevPage = useCallback(() => {
     const { startDate, endDate } = dateRangeRef.current;
-    if (startDate && endDate && batchPage > 1) {
-      fetchBatch(startDate, endDate, batchPage - 1);
+    if (startDate && endDate && pagination.currentPage > 1) {
+      fetchPage(startDate, endDate, pagination.currentPage - 1);
     }
-  }, [fetchBatch, batchPage]);
+  }, [fetchPage, pagination.currentPage]);
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
@@ -134,18 +138,14 @@ const CalendarPage = ({ filters = {} }) => {
         />
       </div>
 
-      {/* Pagination Controls — fixed footer, always visible */}
+      {/* Pagination Controls — fixed footer */}
       <div className="flex-shrink-0 border-t border-gray-200">
         <PaginationControls
           pagination={pagination}
-          onLoadMore={null}
-          isLoading={isLoading}
+          isLoading={isLoading || isPageLoading}
           loadedCount={bookings.size}
-          loadingProgress={loadingProgress}
-          batchPage={batchPage}
-          totalBatches={totalBatches}
-          onNextBatch={handleNextBatch}
-          onPrevBatch={handlePrevBatch}
+          onNextPage={handleNextPage}
+          onPrevPage={handlePrevPage}
         />
       </div>
 

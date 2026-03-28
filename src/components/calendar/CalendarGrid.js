@@ -12,6 +12,52 @@ import logger from '../../utils/logger';
 import { SLOT_HEIGHT, TOTAL_SLOTS } from '../../utils/timeUtils';
 
 /**
+ * CalendarSkeleton — Shown during first page load (isLoading + no therapists yet).
+ * Mimics the real grid layout so there's no blank-screen flicker.
+ */
+function CalendarSkeleton() {
+  const COLS = 7;
+  return (
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden animate-pulse bg-white">
+      {/* Header row */}
+      <div className="flex flex-shrink-0 border-b border-gray-200" style={{ height: 60 }}>
+        <div className="flex-shrink-0 border-r border-gray-200 bg-gray-50" style={{ width: 60 }} />
+        {Array.from({ length: COLS }).map((_, i) => (
+          <div
+            key={i}
+            className="flex flex-col items-center justify-center gap-1 border-r border-gray-200 px-2"
+            style={{ width: 180, minWidth: 180 }}
+          >
+            <div className="w-8 h-8 rounded-full bg-gray-200" />
+            <div className="w-24 h-2.5 rounded bg-gray-200" />
+            <div className="w-14 h-2 rounded bg-gray-100" />
+          </div>
+        ))}
+      </div>
+      {/* Grid body */}
+      <div className="flex flex-1 overflow-hidden">
+        <div className="flex-shrink-0 border-r border-gray-200 bg-gray-50" style={{ width: 60 }} />
+        {Array.from({ length: COLS }).map((_, col) => (
+          <div
+            key={col}
+            className="border-r border-gray-200 px-1.5 pt-2 space-y-2"
+            style={{ width: 180, minWidth: 180 }}
+          >
+            {[80, 56, 96, 64].map((h, row) => (
+              <div
+                key={row}
+                className="rounded-md bg-gray-100"
+                style={{ height: h, marginTop: row === 0 ? 32 : 0 }}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
  * CalendarGrid — Main calendar component
  * Props: selectedDate (Date), onDateChange (func), onBookingClick (func)
  * Uses useVirtualGrid for 2D virtualization
@@ -22,7 +68,7 @@ import { SLOT_HEIGHT, TOTAL_SLOTS } from '../../utils/timeUtils';
  */
 function CalendarGrid({ selectedDate, onDateChange, onBookingClick, filters = {} }) {
   const containerRef = useRef(null);
-  const { bookings, rescheduleOptimistic, rescheduleRollback, updateBooking } = useBookings();
+  const { bookings, rescheduleOptimistic, rescheduleRollback, updateBooking, isPageLoading } = useBookings();
   const therapists = useMergedTherapists(); // Already normalized and merged
   const { addToast, openPanel } = useUI();
 
@@ -267,22 +313,24 @@ function CalendarGrid({ selectedDate, onDateChange, onBookingClick, filters = {}
     [bookings, therapists, rescheduleOptimistic, rescheduleRollback, updateBooking, addToast, openPanel]
   );
 
-  // Show loading state if no therapists and bookings loaded
+  // First-load skeleton — shown while therapists + first page are being fetched
   if ((!therapists || therapists.length === 0) && bookingsList.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center bg-white">
-        <div className="text-center">
-          <p className="text-gray-600 mb-2">Loading therapists and bookings...</p>
-          <p className="text-sm text-gray-400">Therapists: {therapists?.length || 0}</p>
-          <p className="text-sm text-gray-400">Bookings: {bookingsList.length}</p>
-        </div>
-      </div>
-    );
+    return <CalendarSkeleton />;
   }
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="flex flex-col flex-1 bg-white min-h-0 overflow-hidden">
+      <div className="relative flex flex-col flex-1 bg-white min-h-0 overflow-hidden">
+
+        {/* Page-switching overlay — keeps previous page visible while next page loads */}
+        {isPageLoading && (
+          <div className="absolute inset-0 z-30 bg-white/60 flex items-center justify-center pointer-events-none">
+            <div className="flex items-center gap-3 bg-white rounded-lg shadow-md px-5 py-3 border border-gray-100">
+              <span className="w-5 h-5 border-2 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
+              <span className="text-sm font-medium text-gray-600">Loading page…</span>
+            </div>
+          </div>
+        )}
         {/* Main calendar area */}
         <div className="flex flex-1 overflow-hidden bg-white min-h-0 relative">
           {/* Scrollable calendar grid (includes TimeGutter + CalendarHeader inside for proper positioning) */}

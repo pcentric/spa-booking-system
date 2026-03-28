@@ -15,7 +15,7 @@ const FilterModal = ({ isOpen, onClose, onApplyFilters, appliedFilters = {} }) =
 
   // Filter state
   const [filters, setFilters] = useState({
-    therapistGroup: appliedFilters.therapistGroup || 'All', // All, Male, Female
+    therapistGroup: appliedFilters.therapistGroup || 'All Therapist', // All Therapist, Male, Female
     rooms: appliedFilters.rooms || [],
     bookingStatus: appliedFilters.bookingStatus || {
       confirmed: true,

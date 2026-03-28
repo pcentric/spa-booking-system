@@ -4,7 +4,7 @@ import useMergedTherapists from '../../hooks/useMergedTherapists';
 import FilterModal from '../common/FilterModal';
 
 const FiltersBar = ({ filters = {}, onFiltersChange }) => {
-  const { selectedDate, setSelectedDate } = useUI();
+  const { selectedDate, setSelectedDate, triggerRefresh } = useUI();
   const therapists = useMergedTherapists();
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredResults, setFilteredResults] = useState([]);
@@ -116,6 +116,7 @@ const FiltersBar = ({ filters = {}, onFiltersChange }) => {
 
   const handleTodayClick = () => {
     setSelectedDate(new Date());
+    triggerRefresh(); // force re-fetch even if date hasn't changed
   };
 
   const handlePreviousDay = () => {
@@ -152,7 +153,7 @@ const FiltersBar = ({ filters = {}, onFiltersChange }) => {
   const isFilterActive = () => {
     if (!filters) return false;
     return (
-      filters.therapistGroup !== 'All' ||
+      (filters.therapistGroup && filters.therapistGroup !== 'All' && filters.therapistGroup !== 'All Therapist') ||
       (filters.selectedTherapists && filters.selectedTherapists.length > 0) ||
       (filters.rooms && filters.rooms.length > 0) ||
       (filters.bookingStatus && Object.values(filters.bookingStatus).some(val => !val))
