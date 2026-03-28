@@ -2,15 +2,22 @@ import apiClient from './apiClient.js';
 import { transformBookingDetailFromApi } from '../utils/bookingTransform';
 
 /**
- * Fetch bookings for a date range with pagination
+ * Fetch bookings for a date range with page-based pagination
  * Protected endpoint — requires token
+ *
+ * API is page-based (not offset-based). Backend pagination fields:
+ * - currentPage: Which page we're requesting (1-indexed)
+ * - lastPage: Total pages available
+ * - count: Total bookings in database
+ * - total: Items returned per page (misleading name, actually "per_page" count)
+ *
  * @param {string} startDate - DD-MM-YYYY format
  * @param {string} endDate - DD-MM-YYYY format
- * @param {number} limit - Number of bookings per page (default: 100)
- * @param {number} offset - Offset/page number (default: 0)
+ * @param {number} page - Page number, 1-indexed (default: 1)
+ * @param {number} perPage - Items per page (default: 100)
  * @param {number} outlet - Outlet ID (default: 1)
  */
-export async function getBookings(startDate, endDate, outlet = 1, limit = 100, offset = 0) {
+export async function getBookings(startDate, endDate, outlet = 1, perPage = 100, page = 1) {
   try {
     const response = await apiClient.get('/api/v1/bookings/outlet/booking/list', {
       params: {
@@ -19,8 +26,8 @@ export async function getBookings(startDate, endDate, outlet = 1, limit = 100, o
         outlet,
         panel: 'outlet',
         view_type: 'calendar',
-        limit,
-        offset,
+        per_page: perPage,
+        page,
       },
     });
 
@@ -57,22 +64,35 @@ export async function getBookings(startDate, endDate, outlet = 1, limit = 100, o
       bookingsData = response.data;
     }
 
+    // Parse pagination — trust backend field names directly
+    // Backend pagination: { count: total_bookings, currentPage, lastPage, total: items_per_page }
+    const currentPage = paginationInfo?.current_page ?? paginationInfo?.currentPage ?? page;
+    const lastPage = paginationInfo?.last_page ?? paginationInfo?.lastPage ?? 1;
+    const perPageCount = paginationInfo?.total ?? perPage; // "total" in API response = items per page
+    const count = paginationInfo?.count ?? bookingsData.length; // "count" = total bookings in database
+
+    // hasMore = true if there are more pages after this one
+    const hasMore = currentPage < lastPage;
+
     // Log for debugging
     console.log('🔍 Booking API Response:', {
       pathFound: bookingsData.length > 0 ? 'found' : 'not found',
-      bookingsCount: Array.isArray(bookingsData) ? bookingsData.length : 0,
-      paginationTotal: paginationInfo?.total || 0,
+      bookingsLoaded: bookingsData.length,
+      currentPage,
+      lastPage,
+      totalBookings: count,
+      perPageCount,
+      hasMore,
     });
 
     return {
       bookings: Array.isArray(bookingsData) ? bookingsData : [],
       pagination: {
-        limit,
-        offset,
-        total: paginationInfo?.total || 0,
-        hasMore: (offset + limit) < (paginationInfo?.total || 0),
-        currentPage: Math.floor(offset / limit) + 1,
-        totalPages: Math.ceil((paginationInfo?.total || 0) / limit),
+        currentPage,
+        lastPage,
+        perPage: perPageCount,
+        count, // Total bookings in database
+        hasMore,
       },
     };
   } catch (error) {

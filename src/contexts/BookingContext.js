@@ -17,21 +17,32 @@ const initialState = {
     dateRange: null,
     outlet: 1,
   },
+  // Pagination state — page-based (not offset-based)
+  // Backend API provides: { currentPage, lastPage, perPage, count }
+  // where count = total bookings in database
   pagination: {
-    limit: 500,
-    offset: 0,
-    total: 0,
-    hasMore: false,
-    currentPage: 1,
-    totalPages: 0,
+    currentPage: 1,     // Current page (1-indexed)
+    lastPage: 1,        // Total pages available
+    perPage: 100,       // Items per page
+    count: 0,           // Total bookings in database
+    hasMore: false,     // currentPage < lastPage
   },
   isLoadingMore: false,
+  loadingProgress: {
+    loaded: 0,
+    total: 0,
+  },
+  batchPage: 1,
+  totalBatches: 0,
 };
 
 function bookingReducer(state, action) {
   switch (action.type) {
     case 'FETCH_REQUEST':
-      return { ...state, isLoading: true, error: null };
+      return { ...state, isLoading: true, error: null, loadingProgress: { loaded: 0, total: 0 } };
+
+    case 'FETCH_PROGRESS':
+      return { ...state, loadingProgress: action.payload };
 
     case 'FETCH_SUCCESS': {
       const map = new Map();
@@ -73,6 +84,25 @@ function bookingReducer(state, action) {
 
     case 'FETCH_FAILURE':
       return { ...state, isLoading: false, error: action.payload };
+
+    case 'FETCH_BATCH_SUCCESS': {
+      const map = new Map();
+      const bookings = action.payload.bookings || [];
+      if (Array.isArray(bookings)) {
+        bookings.forEach((booking) => {
+          map.set(booking.id, booking);
+        });
+      }
+      return {
+        ...state,
+        bookings: map,
+        isLoading: false,
+        pagination: action.payload.pagination || state.pagination,
+        batchPage: action.payload.batchPage || state.batchPage,
+        totalBatches: action.payload.totalBatches || state.totalBatches,
+        loadingProgress: { loaded: 0, total: 0 },
+      };
+    }
 
     case 'SELECT_BOOKING':
       return { ...state, selectedBookingId: action.payload };
@@ -230,7 +260,18 @@ export function BookingProvider({ children }) {
       const firstResponse = await bookingService.getBookings(startDate, endDate, outlet, 500, 0);
       const firstTransformed = transformBookingsFromApi(firstResponse.bookings);
 
+      // Dispatch first page immediately
       dispatch({ type: 'FETCH_SUCCESS', payload: { bookings: firstTransformed, pagination: firstResponse.pagination } });
+
+      // Set initial progress: first page loaded
+      dispatch({
+        type: 'FETCH_PROGRESS',
+        payload: {
+          loaded: firstTransformed.length,
+          total: firstResponse.pagination.total
+        }
+      });
+
       logger.info('Booking', `Loaded ${firstTransformed.length} bookings (page 1 of ${firstResponse.pagination.totalPages})`, {
         total: firstResponse.pagination.total,
       });
@@ -263,6 +304,15 @@ export function BookingProvider({ children }) {
           finalMap.set(booking.id, booking);
         });
 
+        // Update progress: all pages loaded
+        dispatch({
+          type: 'FETCH_PROGRESS',
+          payload: {
+            loaded: allBookings.length,
+            total: firstResponse.pagination.total
+          }
+        });
+
         dispatch({
           type: 'FETCH_SUCCESS',
           payload: {
@@ -275,6 +325,9 @@ export function BookingProvider({ children }) {
           }
         });
 
+        // Clear loading progress after all pages loaded
+        dispatch({ type: 'FETCH_PROGRESS', payload: { loaded: 0, total: 0 } });
+
         logger.info('Booking', `Loaded all ${allBookings.length} bookings (${firstResponse.pagination.totalPages} pages)`, {
           total: firstResponse.pagination.total,
         });
@@ -283,6 +336,76 @@ export function BookingProvider({ children }) {
       const errorMsg = error.response?.data?.message || error.message || 'Failed to fetch bookings';
       dispatch({ type: 'FETCH_FAILURE', payload: errorMsg });
       logger.error('Booking', 'Failed to fetch bookings', error);
+    }
+  }, []);
+
+  // Batch-based fetch — load 3 pages at a time using page-based API
+  // This prevents overwhelming the API with 20+ concurrent requests
+  // Batch 1 = pages 1-3, Batch 2 = pages 4-6, etc.
+  const fetchBatch = useCallback(async (startDate, endDate, batchPage = 1, outlet = 1) => {
+    const BATCH_SIZE = 3;
+    const PER_PAGE = 100; // Items per page
+
+    // Guard: don't re-fetch if already loading
+    // (prevents double-loads on rapid re-renders)
+    dispatch({ type: 'FETCH_REQUEST' });
+    try {
+      const batchStartPage = (batchPage - 1) * BATCH_SIZE + 1;
+
+      // Fetch first page of this batch to discover lastPage
+      // Use page-based API: per_page, page (not offset/limit)
+      const firstResponse = await bookingService.getBookings(
+        startDate,
+        endDate,
+        outlet,
+        PER_PAGE,      // per_page param
+        batchStartPage  // page param (1-indexed)
+      );
+
+      const { lastPage, count } = firstResponse.pagination;
+      const batchEndPage = Math.min(batchPage * BATCH_SIZE, lastPage);
+      const totalBatches = Math.ceil(lastPage / BATCH_SIZE);
+
+      const allBookings = [...(firstResponse.bookings || [])];
+
+      // Fetch remaining pages in this batch concurrently (max 2 additional requests)
+      // Only fire requests if there are more pages to fetch
+      if (batchEndPage > batchStartPage) {
+        const remainingPromises = [];
+        for (let p = batchStartPage + 1; p <= batchEndPage; p++) {
+          remainingPromises.push(
+            bookingService.getBookings(startDate, endDate, outlet, PER_PAGE, p)
+          );
+        }
+        const remainingResponses = await Promise.all(remainingPromises);
+        remainingResponses.forEach((r) => {
+          allBookings.push(...(r.bookings || []));
+        });
+      }
+
+      const transformed = transformBookingsFromApi(allBookings);
+      dispatch({
+        type: 'FETCH_BATCH_SUCCESS',
+        payload: {
+          bookings: transformed,
+          batchPage,
+          totalBatches,
+          pagination: {
+            currentPage: batchStartPage,
+            lastPage,
+            perPage: firstResponse.pagination.perPage,
+            count,
+            hasMore: batchStartPage < lastPage,
+          },
+        },
+      });
+      logger.info('Booking', `Loaded batch ${batchPage}/${totalBatches} (${transformed.length} bookings, ${count} total)`, {
+        pages: `${batchStartPage}-${batchEndPage} of ${lastPage}`,
+      });
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to fetch bookings';
+      dispatch({ type: 'FETCH_FAILURE', payload: errorMsg });
+      logger.error('Booking', 'Failed to fetch batch', error);
     }
   }, []);
 
@@ -453,8 +576,12 @@ export function BookingProvider({ children }) {
     error: state.error,
     filters: state.filters,
     pagination: state.pagination,
+    loadingProgress: state.loadingProgress,
+    batchPage: state.batchPage,
+    totalBatches: state.totalBatches,
     fetchBookings,
     fetchAllBookings,
+    fetchBatch,
     loadMoreBookings,
     createBooking,
     updateBooking,

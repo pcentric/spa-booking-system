@@ -89,7 +89,16 @@ const FiltersBar = ({ filters = {}, onFiltersChange }) => {
     const date = e.target.value;
     setSelectedDate(date);
   };
-
+  const openDatePicker = () => {
+    if (!dateInputRef.current) return;
+  
+    if (typeof dateInputRef.current.showPicker === 'function') {
+      dateInputRef.current.showPicker();
+    } else {
+      dateInputRef.current.focus();
+      dateInputRef.current.click();
+    }
+  };
   const getDateString = (date) => {
     // Convert Date object to YYYY-MM-DD string
     if (!date) return '';
@@ -247,7 +256,7 @@ const FiltersBar = ({ filters = {}, onFiltersChange }) => {
         </div>
 
         {/* Right: Controls */}
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex items-center gap-2 ml-auto relative">
 
           {/* Filter Button */}
           <button
@@ -268,7 +277,7 @@ const FiltersBar = ({ filters = {}, onFiltersChange }) => {
           </button>
 
           {/* Today + Date Nav + Calendar — grouped */}
-          <div className="flex items-center border border-gray-300 rounded-md overflow-hidden bg-white">
+          <div className="flex items-center border border-gray-300 rounded-md overflow-visible bg-white relative">
             <button
               onClick={handleTodayClick}
               className="px-3 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 transition-colors border-r border-gray-300"
@@ -294,24 +303,29 @@ const FiltersBar = ({ filters = {}, onFiltersChange }) => {
             </button>
             <div className="w-px bg-gray-300 h-8 self-center" />
             <button
-              onClick={() => dateInputRef.current?.click()}
-              className="px-3 py-2 text-gray-500 hover:bg-gray-50 transition-colors"
-              title="Open calendar"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-              </svg>
-            </button>
+  type="button"
+  onClick={openDatePicker}
+  className="px-3 py-2 text-gray-500 hover:bg-gray-50 transition-colors cursor-pointer flex items-center"
+  title="Open calendar"
+>
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+    <line x1="16" y1="2" x2="16" y2="6"/>
+    <line x1="8" y1="2" x2="8" y2="6"/>
+    <line x1="3" y1="10" x2="21" y2="10"/>
+  </svg>
+</button>
           </div>
 
-          {/* Hidden date input */}
+          {/* Date input - styled as hidden but clickable via label */}
           <input
-            ref={dateInputRef}
-            type="date"
-            value={getDateString(selectedDate)}
-            onChange={handleDateChange}
-            className="hidden"
-          />
+  id="date-picker"
+  ref={dateInputRef}
+  type="date"
+  value={getDateString(selectedDate)}
+  onChange={handleDateChange}
+  className="absolute opacity-0 pointer-events-none w-0 h-0"
+/>
         </div>
       </div>
 
