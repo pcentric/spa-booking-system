@@ -100,11 +100,6 @@ const CalendarPage = ({ filters = {} }) => {
     openPanel('detail', bookingId);
   };
 
-  const handleCreateBooking = () => {
-    logger.debug('CalendarPage', 'Create booking clicked');
-    openPanel('create');
-  };
-
   const handleDateChange = (newDate) => {
     setSelectedDate(newDate);
   };
