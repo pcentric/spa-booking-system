@@ -296,7 +296,7 @@ function CalendarGrid({ selectedDate, onDateChange, onBookingClick, filters = {}
             }}
           >
             {/* Header row - CalendarHeader scrolls horizontally but sticks to top */}
-            <div className="flex" style={{ width: `${totalWidth + 60}px`, height: '60px' }}>
+            <div className="flex" style={{ minWidth: `${totalWidth + 60}px`, width: '100%', height: '60px' }}>
               {/* TimeGutter corner spacer (60px x 60px) */}
               <div className="flex-shrink-0 bg-white border-r border-b border-gray-300" style={{ width: '60px', height: '60px' }} />
 
@@ -312,7 +312,15 @@ function CalendarGrid({ selectedDate, onDateChange, onBookingClick, filters = {}
             </div>
 
             {/* Grid content row - TimeGutter sticky on left, Grid scrolls */}
-            <div className="flex" style={{ width: `${totalWidth + 60}px`, height: `${totalHeight}px` }}>
+            <div
+              className="flex"
+              style={{
+                minWidth: `${totalWidth + 60}px`,
+                width: '100%',
+                height: `${totalHeight}px`,
+                backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${SLOT_HEIGHT - 1}px, #f0f0f0 ${SLOT_HEIGHT - 1}px, #f0f0f0 ${SLOT_HEIGHT}px)`,
+              }}
+            >
               {/* Time gutter (left sidebar) - sticky on left, scrolls vertically */}
               <TimeGutter containerRef={containerRef} />
 
