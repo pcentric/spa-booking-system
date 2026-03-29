@@ -1,88 +1,69 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useUI } from '../../hooks/useUI.js';
-import useMergedTherapists from '../../hooks/useMergedTherapists';
+import useBookings from '../../hooks/useBookings';
 import FilterModal from '../common/FilterModal';
 
+// Status badge colours — mirrors the booking card palette
+const STATUS_STYLES = {
+  confirmed:          'bg-blue-100 text-blue-700',
+  unconfirmed:        'bg-yellow-100 text-yellow-700',
+  'checked in':       'bg-green-100 text-green-700',
+  completed:          'bg-gray-100 text-gray-600',
+  cancelled:          'bg-red-100 text-red-600',
+  'no show':          'bg-orange-100 text-orange-700',
+  holding:            'bg-purple-100 text-purple-700',
+  'in progress':      'bg-teal-100 text-teal-700',
+};
+
+const statusStyle = (status = '') =>
+  STATUS_STYLES[(status || '').toLowerCase()] || 'bg-gray-100 text-gray-500';
+
 const FiltersBar = ({ filters = {}, onFiltersChange }) => {
-  const { selectedDate, setSelectedDate, triggerRefresh } = useUI();
-  const therapists = useMergedTherapists();
+  const { selectedDate, setSelectedDate, triggerRefresh, openPanel } = useUI();
+  const { bookings } = useBookings();
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredResults, setFilteredResults] = useState([]);
+  const [searchResults, setSearchResults] = useState([]);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const searchRef = useRef(null);
   const searchTimeoutRef = useRef(null);
   const dateInputRef = useRef(null);
 
-  // Filter therapists based on search query
-  const filterTherapists = useCallback((query) => {
-    if (!therapists || therapists.length === 0) {
-      setFilteredResults([]);
-      return;
-    }
-
-    if (!query.trim()) {
-      setFilteredResults(therapists);
-      return;
-    }
-
-    const lowerQuery = query.toLowerCase();
-    const filtered = therapists.filter(therapist => {
-      const name = (therapist.name || therapist.alias || '').toLowerCase();
-      const alias = (therapist.alias || '').toLowerCase();
-      return name.includes(lowerQuery) || alias.includes(lowerQuery);
-    });
-
-    setFilteredResults(filtered);
-  }, [therapists]);
-
-  // Initial load of therapists on mount
+  // Search bookings by customer name or phone (debounced 300 ms)
   useEffect(() => {
-    if (therapists && therapists.length > 0) {
-      setFilteredResults(therapists);
-    }
-  }, [therapists]);
-
-  // Handle search query changes
-  useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
 
     searchTimeoutRef.current = setTimeout(() => {
-      filterTherapists(searchQuery);
-    }, 200);
-
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
+      const q = searchQuery.trim().toLowerCase();
+      if (!q) {
+        setSearchResults([]);
+        return;
       }
-    };
-  }, [searchQuery, filterTherapists]);
 
-  const handleSelectTherapist = (therapist) => {
-    setSearchQuery(therapist.alias || therapist.name || '');
+      const results = [];
+      for (const booking of bookings.values()) {
+        const name  = (booking.customer_name  || '').toLowerCase();
+        const phone = (booking.customer_phone || '').toLowerCase();
+        if (name.includes(q) || phone.includes(q)) {
+          results.push(booking);
+          if (results.length >= 25) break; // cap results for performance
+        }
+      }
+      setSearchResults(results);
+    }, 300);
+
+    return () => clearTimeout(searchTimeoutRef.current);
+  }, [searchQuery, bookings]);
+
+  const handleSelectBooking = (booking) => {
     setShowSearchResults(false);
+    setSearchQuery('');
+    openPanel('detail', booking.id);
+  };
 
-    // Add therapist to selectedTherapists array in filters
-    const selectedTherapists = filters.selectedTherapists || [];
-    const isAlreadySelected = selectedTherapists.includes(therapist.id);
-
-    let updatedTherapists;
-    if (isAlreadySelected) {
-      updatedTherapists = selectedTherapists.filter(id => id !== therapist.id);
-    } else {
-      updatedTherapists = [...selectedTherapists, therapist.id];
-    }
-
-    const updatedFilters = {
-      ...filters,
-      selectedTherapists: updatedTherapists,
-    };
-
-    if (onFiltersChange) {
-      onFiltersChange(updatedFilters);
-    }
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    setSearchResults([]);
   };
 
   const handleDateChange = (e) => {
@@ -173,13 +154,20 @@ const FiltersBar = ({ filters = {}, onFiltersChange }) => {
           </div>
         </div>
 
-        {/* Center: Search with Dropdown */}
+        {/* Center: Customer booking search */}
         <div className="flex-1 max-w-md relative" ref={searchRef}>
           <div className="relative flex items-center">
-            <span className="absolute left-3 text-gray-400 pointer-events-none text-sm">🔍</span>
+            <svg
+              className="absolute left-3 text-gray-400 pointer-events-none"
+              width="14" height="14" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2.5"
+              strokeLinecap="round" strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
             <input
               type="text"
-              placeholder="Search Sales by phone/name"
+              placeholder="Search customer by name or phone..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setShowSearchResults(true)}
@@ -188,68 +176,87 @@ const FiltersBar = ({ filters = {}, onFiltersChange }) => {
             />
             {searchQuery && (
               <button
-                onClick={() => {
-                  setSearchQuery('');
-                  const clearedFilters = { ...filters };
-                  delete clearedFilters.selectedTherapists;
-                  if (onFiltersChange) onFiltersChange(clearedFilters);
-                }}
-                className="absolute right-3 text-gray-400 hover:text-gray-600 transition-colors text-xs"
+                onClick={handleClearSearch}
+                className="absolute right-3 text-gray-400 hover:text-gray-600 transition-colors"
                 title="Clear search"
               >
-                ✕
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
               </button>
             )}
           </div>
 
-          {/* Search Results Dropdown */}
-          {showSearchResults && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-50 max-h-96 overflow-y-auto">
-              {(!therapists || therapists.length === 0) && (
-                <div className="px-4 py-6 text-center">
-                  <p className="text-sm text-gray-500">Loading therapists...</p>
-                </div>
-              )}
-              {therapists && filteredResults.length > 0 && (
-                <>
-                  <div className="sticky top-0 bg-gray-50 px-4 py-2 border-b border-gray-200">
-                    <p className="text-xs font-semibold text-gray-700">
-                      {searchQuery.trim() ? `Found ${filteredResults.length} therapist${filteredResults.length !== 1 ? 's' : ''}` : `All Therapists (${filteredResults.length})`}
-                    </p>
-                  </div>
-                  {filteredResults.map((therapist, idx) => {
-                    const isSelected = (filters.selectedTherapists || []).includes(therapist.id);
-                    return (
-                      <div
-                        key={`therapist-${therapist.id || idx}`}
-                        className={`px-4 py-3 border-b border-gray-100 hover:bg-orange-50 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50' : ''}`}
-                        onClick={() => handleSelectTherapist(therapist)}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="text-sm font-bold text-gray-900">
-                              {therapist.alias || therapist.name || 'Unknown Therapist'}
-                            </div>
-                            <div className="text-xs text-gray-600 mt-0.5">
-                              {therapist.gender && `(${therapist.gender})`}
-                            </div>
-                          </div>
-                          {isSelected && <div className="ml-2 text-blue-600 font-bold">✓</div>}
+          {/* Search results dropdown */}
+          {showSearchResults && searchQuery.trim() && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-[420px] overflow-y-auto">
+
+              {/* Header */}
+              <div className="sticky top-0 bg-gray-50 px-4 py-2 border-b border-gray-200 flex items-center justify-between">
+                <p className="text-xs font-semibold text-gray-600">
+                  {searchResults.length > 0
+                    ? `${searchResults.length} booking${searchResults.length !== 1 ? 's' : ''} found`
+                    : 'No bookings found'}
+                </p>
+                {searchResults.length === 25 && (
+                  <p className="text-xs text-gray-400">Showing first 25 — refine your search</p>
+                )}
+              </div>
+
+              {/* Results */}
+              {searchResults.length > 0 ? (
+                searchResults.map((booking) => (
+                  <div
+                    key={`booking-result-${booking.id}`}
+                    className="px-4 py-3 border-b border-gray-100 last:border-0 hover:bg-orange-50 cursor-pointer transition-colors"
+                    onClick={() => handleSelectBooking(booking)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      {/* Left: customer + booking info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-gray-900 truncate">
+                            {booking.customer_name || 'Unknown'}
+                          </span>
+                          {booking.customer_phone && (
+                            <span className="text-xs text-gray-500 flex-shrink-0">
+                              {booking.customer_phone}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                          {booking.service_name && (
+                            <span className="font-medium text-gray-700 truncate max-w-[160px]">
+                              {booking.service_name}
+                            </span>
+                          )}
+                          {booking.start_time && (
+                            <>
+                              <span className="text-gray-300">·</span>
+                              <span>{booking.start_time}</span>
+                            </>
+                          )}
+                          {booking.therapist_name && (
+                            <>
+                              <span className="text-gray-300">·</span>
+                              <span className="truncate max-w-[100px]">{booking.therapist_name}</span>
+                            </>
+                          )}
                         </div>
                       </div>
-                    );
-                  })}
-                </>
-              )}
-              {therapists && filteredResults.length === 0 && searchQuery.trim() && (
-                <div className="px-4 py-6 text-center">
-                  <p className="text-sm text-gray-500">No therapists match "{searchQuery}"</p>
-                  <p className="text-xs text-gray-400 mt-2">Try searching by therapist name</p>
-                </div>
-              )}
-              {therapists && filteredResults.length === 0 && !searchQuery.trim() && (
-                <div className="px-4 py-6 text-center">
-                  <p className="text-sm text-gray-500">No therapists available</p>
+                      {/* Right: status badge */}
+                      {booking.status && (
+                        <span className={`flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${statusStyle(booking.status)}`}>
+                          {booking.status}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="px-4 py-8 text-center">
+                  <p className="text-sm text-gray-500">No bookings match <strong>"{searchQuery}"</strong></p>
+                  <p className="text-xs text-gray-400 mt-1">Try a different name or phone number</p>
                 </div>
               )}
             </div>
