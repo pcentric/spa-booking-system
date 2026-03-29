@@ -179,6 +179,9 @@ const isCancelled =
             <div>
               <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Service</p>
               <p className="text-sm font-medium text-gray-900 mt-1">{booking.service_name}</p>
+              {booking.service_description && (
+                <p className="text-xs text-gray-500 mt-0.5">{booking.service_description}</p>
+              )}
             </div>
           )}
           {booking.therapist_name && (
@@ -197,7 +200,7 @@ const isCancelled =
       </div>
 
       {/* Additional Information */}
-      {(booking.source || booking.payment_status || booking.notes) && (
+      {(booking.source || booking.payment_status || booking.description || booking.notes) && (
         <div className="pb-6">
           <h3 className="text-base font-bold text-gray-900 mb-4">Additional Information</h3>
           <div className="space-y-3 text-sm">
@@ -213,10 +216,10 @@ const isCancelled =
                 <p className="font-medium text-gray-900">{booking.payment_status}</p>
               </div>
             )}
-            {booking.notes && (
+            {(booking.description || booking.notes) && (
               <div>
-                <p className="text-gray-600">Notes</p>
-                <p className="font-medium text-gray-900 break-words">{booking.notes}</p>
+                <p className="text-gray-600">Description</p>
+                <p className="font-medium text-gray-900 break-words">{booking.description || booking.notes}</p>
               </div>
             )}
           </div>

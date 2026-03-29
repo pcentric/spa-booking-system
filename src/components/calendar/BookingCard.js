@@ -67,6 +67,13 @@ function BookingCard({ booking, therapistIndex, bookingIndexInTherapist, onBooki
               {booking.service_name || 'Service'}
             </div>
 
+            {/* Service Description — only shown when card is tall enough */}
+            {booking.service_description && height >= 72 && (
+              <div className="truncate leading-tight text-[10px] opacity-70 mt-0.5">
+                {booking.service_description}
+              </div>
+            )}
+
             {/* Phone Number */}
             <div className="font-normal truncate leading-tight text-[11px] text-gray-700 mt-0.5">
               {booking.customer_phone || ''}
@@ -111,8 +118,8 @@ function BookingCard({ booking, therapistIndex, bookingIndexInTherapist, onBooki
                 🌐
               </span>
 
-              {/* Notes icon - only if booking has notes */}
-              {booking.notes && (
+              {/* Notes icon - only if booking has a description/note */}
+              {(booking.description || booking.notes) && (
                 <span className="w-4 h-4 rounded-full bg-gray-400 flex items-center justify-center text-white text-[8px] flex-shrink-0">
                   📋
                 </span>

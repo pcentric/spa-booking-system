@@ -40,7 +40,7 @@ const BookingForm = React.forwardRef(({ booking, initialData, onSuccess }, ref) 
         room_id: '',
       },
     ],
-    notes: '',
+    description: '',
   });
 
   const [errors, setErrors] = useState({});
@@ -126,7 +126,7 @@ useEffect(() => {
         source: booking.source || 'Walk-in',
         payment_type: booking.payment_type || 'payatstore',
         items,
-        notes: booking.notes || '',
+        description: booking.description || booking.notes || '',
         service_id: booking.service_id,
   therapist_id: booking.therapist_id,
       });
@@ -460,16 +460,28 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* Notes */}
+      {/* Service Description (read-only — from service catalogue) */}
+      {booking?.service_description && (
+        <div className="border-b border-gray-200 pb-4">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+            Service Description
+          </p>
+          <p className="text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2 leading-relaxed">
+            {booking.service_description}
+          </p>
+        </div>
+      )}
+
+      {/* Description (user booking note) */}
       <div className="border-b border-gray-200 pb-4">
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Additional Notes
+          Description
         </label>
         <textarea
-          name="notes"
-          value={formData.notes}
+          name="description"
+          value={formData.description}
           onChange={handleInputChange}
-          placeholder="Add any notes about this booking"
+          placeholder="Add a description for this booking"
           rows="3"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
         />

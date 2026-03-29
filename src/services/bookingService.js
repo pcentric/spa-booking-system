@@ -282,15 +282,31 @@ export async function createBooking(bookingData) {
  */
 export function prepareCompleteBookingData(bookingData, currentBooking = {}) {
   return {
-    therapist_id: bookingData.therapist_id !== undefined ? bookingData.therapist_id : currentBooking.therapist_id,
-    source: bookingData.source !== undefined ? bookingData.source : (currentBooking.source || 'Manual'),
-    booking_type: bookingData.booking_type !== undefined ? bookingData.booking_type : (currentBooking.booking_type || 1),
-    customer: bookingData.customer !== undefined ? bookingData.customer : (currentBooking.customer_id || currentBooking.customer || 1),
-    membership: bookingData.membership !== undefined ? bookingData.membership : (currentBooking.membership || 0),
-    outlet: bookingData.outlet !== undefined ? bookingData.outlet : 1,
-    updated_by: bookingData.updated_by !== undefined ? bookingData.updated_by : 229061,
+    therapist_id:   bookingData.therapist_id   !== undefined ? bookingData.therapist_id   : currentBooking.therapist_id,
+    source:         bookingData.source         !== undefined ? bookingData.source         : (currentBooking.source || 'Manual'),
+    booking_type:   bookingData.booking_type   !== undefined ? bookingData.booking_type   : (currentBooking.booking_type || 1),
+    customer:       bookingData.customer       !== undefined ? bookingData.customer       : (currentBooking.customer_id || currentBooking.customer || 1),
+    membership:     bookingData.membership     !== undefined ? bookingData.membership     : (currentBooking.membership || 0),
+    outlet:         bookingData.outlet         !== undefined ? bookingData.outlet         : 1,
+    updated_by:     bookingData.updated_by     !== undefined ? bookingData.updated_by     : 229061,
     panel: 'outlet',
-    // Include items if available
+
+    // Customer details
+    customer_name:  bookingData.customer_name  || currentBooking.customer_name  || '',
+    customer_email: bookingData.customer_email || currentBooking.customer_email || '',
+    mobile_number:  bookingData.mobile_number  || currentBooking.customer_phone || '',
+
+    // Booking date/time
+    ...(bookingData.service_at && { service_at: bookingData.service_at }),
+
+    // Note / description — send both field names for API compatibility
+    note:        bookingData.note        !== undefined ? bookingData.note        : (bookingData.description || currentBooking.description || currentBooking.notes || ''),
+    description: bookingData.description !== undefined ? bookingData.description : (currentBooking.description || currentBooking.notes || ''),
+
+    // Payment / source
+    payment_type:   bookingData.payment_type   || currentBooking.payment_type   || 'payatstore',
+
+    // Items
     ...(bookingData.items && { items: bookingData.items }),
     ...(currentBooking.items && !bookingData.items && { items: currentBooking.items }),
   };
@@ -338,10 +354,15 @@ export async function updateBooking(bookingId, bookingData, currentBooking = {})
       booking = response.data.booking;
       console.log('Extracted booking from response.data.booking');
     }
-    // Structure 2: { data: { booking: {...} } }
+    // Structure 2: { data: { booking: {...}, booking_item: {...} } }
+    // booking_item is a SIBLING of booking — merge it in so transformBookingFromApi can read items
     else if (response?.data?.data?.booking) {
-      booking = response.data.data.booking;
-      console.log('Extracted booking from response.data.data.booking');
+      booking = {
+        ...response.data.data.booking,
+        booking_item: response.data.data.booking_item || response.data.data.booking.booking_item,
+        booking_created_at: response.data.data.booking_created_at,
+      };
+      console.log('Extracted booking from response.data.data.booking (with booking_item merged)');
     }
     // Structure 3: { data: { bookingData: [...] } }
     else if (response?.data?.data?.bookingData && Array.isArray(response.data.data.bookingData)) {

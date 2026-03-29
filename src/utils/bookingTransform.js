@@ -129,6 +129,10 @@ service_name:
   primaryItem.service_name ||
   primaryItem.service ||
   '',
+service_description:
+  apiBooking.service_description ||
+  apiBooking.service_description_translated ||
+  '',
       start_time: startTime,
       end_time: endTime,
       duration,
@@ -139,7 +143,8 @@ service_name:
 
       payment_status: apiBooking.payment_status_id === 1 ? 'Unpaid' : 'Paid',
       source: apiBooking.source,
-      notes: apiBooking.remark || apiBooking.sales_note,
+      // User booking note: stored inside content JSON as "note", fallback to remark/sales_note
+      description: contentData.note || apiBooking.description || apiBooking.remark || apiBooking.sales_note || '',
       items: items,
       created_at: apiBooking.created_at,
       updated_at: apiBooking.updated_at,
@@ -291,6 +296,7 @@ export function transformBookingFromApi(apiBooking) {
       therapist_name: items[0].therapist,
       service_id: items[0].service_id,
       service_name: items[0].service,
+      service_description: bookingData.service_description || bookingData.service_description_translated || '',
       start_time: items[0].start_time,
       end_time: items[0].end_time,
       duration: items[0].duration,
@@ -300,7 +306,7 @@ export function transformBookingFromApi(apiBooking) {
       status: normalizedStatus,
       payment_status: bookingData.payment_type,
       source: bookingData.source,
-      notes: bookingData.notes || bookingData.note,
+      description: bookingData.description || bookingData.notes || bookingData.note || '',
       items,
       created_at: bookingData.created_at,
       updated_at: bookingData.booking_created_at,
@@ -370,7 +376,8 @@ export function transformBookingToApi(internalBooking, formData) {
     source: formData.source || 'WhatsApp',
     payment_type: formData.payment_type || 'payatstore',
     service_at: formData.service_at, // DD-MM-YYYY HH:MM
-    note: formData.notes,
+    description: formData.description || '',
+    note: formData.description || '',
     membership: formData.membership || 0,
     panel: 'outlet',
     type: formData.type || 'manual',
@@ -407,7 +414,8 @@ export function transformEditToApi(formData) {
     updated_by: formData.updated_by || 229061,
     booking_type: 1,
     membership: formData.membership || 0,
-    note: formData.notes || '',
+    description: formData.description || '',
+    note: formData.description || '',
     status: formData.status || 'Confirmed',
     items: formData.items || [],
   };
