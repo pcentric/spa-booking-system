@@ -187,11 +187,11 @@ useEffect(() => {
   };
 
   const handleSubmit = async (e) => {
+    e.preventDefault(); // Always prevent native submit first
     if (booking && !isDirty) {
       addToast('No changes detected', 'info');
       return;
     }
-    e.preventDefault();
     logger.debug('BookingForm', 'Form submitted', { isEditing: !!booking });
     const isEditing = !!booking;
 
@@ -368,7 +368,7 @@ useEffect(() => {
             name="customer_name"
             value={formData.customer_name}
             onChange={handleInputChange}
-            placeholder="Enter customer name"
+            placeholder="Full name (required)"
             required
             error={errors.customer_name}
           />
@@ -386,10 +386,15 @@ useEffect(() => {
             name="customer_phone"
             value={formData.customer_phone}
             onChange={handleInputChange}
-            placeholder="Enter phone number"
+            placeholder="+65 9123 4567"
             required
             error={errors.customer_phone}
           />
+          {!errors.customer_phone && (
+            <p className="text-xs text-gray-400 -mt-2">
+              Include country code — e.g. +65 (SG), +91 (IN), +1 (US)
+            </p>
+          )}
         </div>
       </div>
 
