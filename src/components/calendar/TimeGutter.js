@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import useVirtualGrid from '../../hooks/useVirtualGrid';
 import { getTimeFromSlotIndex, SLOT_HEIGHT, TOTAL_SLOTS } from '../../utils/timeUtils';
-import logger from '../../utils/logger';
 
 /**
  * TimeGutter — Left sidebar with time labels (09:00, 09:15, ..., 23:00)
@@ -17,35 +16,24 @@ function TimeGutter({ containerRef }) {
     containerRef,
   });
 
-  const formatTimeDisplay = (time) => {
-    // Input: "09:00" format, output: "09.00 AM"
-    if (!time) return '';
-    const [hours, minutes] = time.split(':').map(Number);
-    const period = hours >= 12 ? 'PM' : 'AM';
-    const displayHours = hours % 12 || 12;
-    return `${String(displayHours).padStart(2, '0')}.${String(minutes).padStart(2, '0')} ${period}`;
-  };
-
   const timeLabels = useMemo(() => {
     const labels = [];
-    // Only show every 4th slot (hourly) for header clarity
     for (let i = virtualGrid.visibleRowRange.start; i < virtualGrid.visibleRowRange.end; i++) {
-      if (i % 4 === 0) {  // Every 15 mins * 4 = hourly
-        labels.push({
-          index: i,
-          time: getTimeFromSlotIndex(i),
-          displayTime: formatTimeDisplay(getTimeFromSlotIndex(i)),
-        });
+      const time = getTimeFromSlotIndex(i);
+      const [hours, minutes] = time.split(':').map(Number);
+      const isHour = minutes === 0;
+      let label = '';
+      if (isHour) {
+        const period = hours >= 12 ? 'PM' : 'AM';
+        const h = hours % 12 || 12;
+        label = `${h} ${period}`;
+      } else {
+        label = `:${String(minutes).padStart(2, '0')}`;
       }
+      labels.push({ index: i, label, isHour });
     }
     return labels;
   }, [virtualGrid.visibleRowRange]);
-
-  logger.debug('TimeGutter', 'Rendering time slots', {
-    visibleStart: virtualGrid.visibleRowRange.start,
-    visibleEnd: virtualGrid.visibleRowRange.end,
-    count: timeLabels.length,
-  });
 
   return (
     <div
@@ -53,7 +41,6 @@ function TimeGutter({ containerRef }) {
       style={{
         width: '60px',
         height: `${virtualGrid.totalHeight}px`,
-        backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${SLOT_HEIGHT - 1}px, #f0f0f0 ${SLOT_HEIGHT - 1}px, #f0f0f0 ${SLOT_HEIGHT}px)`,
         top: 0,
       }}
     >
@@ -66,14 +53,17 @@ function TimeGutter({ containerRef }) {
           }px`,
         }}
       >
-        {timeLabels.map(({ index, displayTime, time }) => (
+        {timeLabels.map(({ index, label, isHour }) => (
           <div
             key={`time-${index}`}
-            className="flex flex-col items-center justify-center border-b border-gray-300 bg-white"
-            style={{ height: `${SLOT_HEIGHT * 4}px` }}
+            className="flex items-start justify-end pr-2 pt-0.5 border-b border-gray-100"
+            style={{ height: `${SLOT_HEIGHT}px` }}
           >
-            <div className="text-xs font-bold text-gray-800">{displayTime}</div>
-            <div className="text-[10px] text-gray-500 mt-0.5">23F 25M</div>
+            {isHour ? (
+              <span className="text-[11px] font-bold text-gray-700 leading-none">{label}</span>
+            ) : (
+              <span className="text-[9px] text-gray-400 leading-none">{label}</span>
+            )}
           </div>
         ))}
       </div>

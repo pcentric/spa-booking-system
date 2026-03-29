@@ -1,7 +1,21 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useUI } from '../../hooks/useUI.js';
 import useBookings from '../../hooks/useBookings';
 import FilterModal from '../common/FilterModal';
+
+// Highlights matched substring in orange — used in search results
+const HighlightMatch = ({ text, query }) => {
+  if (!query || !text) return <span>{text}</span>;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return <span>{text}</span>;
+  return (
+    <span>
+      {text.slice(0, idx)}
+      <span style={{ color: '#c8531a', fontWeight: 700 }}>{text.slice(idx, idx + query.length)}</span>
+      {text.slice(idx + query.length)}
+    </span>
+  );
+};
 
 // Status badge colours — mirrors the booking card palette
 const STATUS_STYLES = {
@@ -28,6 +42,21 @@ const FiltersBar = ({ filters = {}, onFiltersChange }) => {
   const searchRef = useRef(null);
   const searchTimeoutRef = useRef(null);
   const dateInputRef = useRef(null);
+
+  // Unique customers for pre-search dropdown (A-Z, deduplicated by name+phone)
+  const uniqueCustomers = useMemo(() => {
+    const seen = new Set();
+    const list = [];
+    for (const booking of bookings.values()) {
+      const key = `${(booking.customer_name || '').toLowerCase()}|${booking.customer_phone || ''}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        list.push({ name: booking.customer_name || '', phone: booking.customer_phone || '', bookingId: booking.id });
+      }
+    }
+    list.sort((a, b) => a.name.localeCompare(b.name));
+    return list;
+  }, [bookings]);
 
   // Search bookings by customer name or phone (debounced 300 ms)
   useEffect(() => {
@@ -187,77 +216,116 @@ const FiltersBar = ({ filters = {}, onFiltersChange }) => {
             )}
           </div>
 
-          {/* Search results dropdown */}
-          {showSearchResults && searchQuery.trim() && (
+          {/* Dropdown: pre-search customer list OR search results */}
+          {showSearchResults && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-[420px] overflow-y-auto">
 
-              {/* Header */}
-              <div className="sticky top-0 bg-gray-50 px-4 py-2 border-b border-gray-200 flex items-center justify-between">
-                <p className="text-xs font-semibold text-gray-600">
-                  {searchResults.length > 0
-                    ? `${searchResults.length} booking${searchResults.length !== 1 ? 's' : ''} found`
-                    : 'No bookings found'}
-                </p>
-                {searchResults.length === 25 && (
-                  <p className="text-xs text-gray-400">Showing first 25 — refine your search</p>
-                )}
-              </div>
-
-              {/* Results */}
-              {searchResults.length > 0 ? (
-                searchResults.map((booking) => (
-                  <div
-                    key={`booking-result-${booking.id}`}
-                    className="px-4 py-3 border-b border-gray-100 last:border-0 hover:bg-orange-50 cursor-pointer transition-colors"
-                    onClick={() => handleSelectBooking(booking)}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      {/* Left: customer + booking info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-gray-900 truncate">
-                            {booking.customer_name || 'Unknown'}
-                          </span>
-                          {booking.customer_phone && (
-                            <span className="text-xs text-gray-500 flex-shrink-0">
-                              {booking.customer_phone}
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
-                          {booking.service_name && (
-                            <span className="font-medium text-gray-700 truncate max-w-[160px]">
-                              {booking.service_name}
-                            </span>
-                          )}
-                          {booking.start_time && (
-                            <>
-                              <span className="text-gray-300">·</span>
-                              <span>{booking.start_time}</span>
-                            </>
-                          )}
-                          {booking.therapist_name && (
-                            <>
-                              <span className="text-gray-300">·</span>
-                              <span className="truncate max-w-[100px]">{booking.therapist_name}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      {/* Right: status badge */}
-                      {booking.status && (
-                        <span className={`flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${statusStyle(booking.status)}`}>
-                          {booking.status}
-                        </span>
-                      )}
-                    </div>
+              {/* ── PRE-SEARCH: show all unique customers ── */}
+              {!searchQuery.trim() && (
+                <>
+                  <div className="sticky top-0 bg-gray-50 px-4 py-2 border-b border-gray-200">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Customers</p>
                   </div>
-                ))
-              ) : (
-                <div className="px-4 py-8 text-center">
-                  <p className="text-sm text-gray-500">No bookings match <strong>"{searchQuery}"</strong></p>
-                  <p className="text-xs text-gray-400 mt-1">Try a different name or phone number</p>
-                </div>
+                  {uniqueCustomers.length > 0 ? (
+                    uniqueCustomers.map((customer, idx) => (
+                      <div
+                        key={`customer-${idx}`}
+                        className="px-4 py-2.5 border-b border-gray-100 last:border-0 hover:bg-orange-50 cursor-pointer transition-colors"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setSearchQuery(customer.name);
+                        }}
+                      >
+                        <p className="text-sm font-bold text-gray-900 leading-tight">{customer.name}</p>
+                        {customer.phone && (
+                          <p className="text-xs text-gray-400 mt-0.5">{customer.phone}</p>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-4 py-6 text-center">
+                      <p className="text-sm text-gray-400">No customers loaded yet</p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* ── SEARCH RESULTS ── */}
+              {searchQuery.trim() && (
+                <>
+                  {/* Header */}
+                  <div className="sticky top-0 bg-gray-50 px-4 py-2 border-b border-gray-200 flex items-center justify-between">
+                    <p className="text-xs font-semibold text-gray-600">
+                      {searchResults.length > 0
+                        ? `${searchResults.length} booking${searchResults.length !== 1 ? 's' : ''} found`
+                        : 'No bookings found'}
+                    </p>
+                    {searchResults.length === 25 && (
+                      <p className="text-xs text-gray-400">Showing first 25 — refine your search</p>
+                    )}
+                  </div>
+
+                  {searchResults.length > 0 ? (
+                    searchResults.map((booking, idx) => {
+                      const isFirst = idx === 0;
+                      return (
+                        <div
+                          key={`booking-result-${booking.id}`}
+                          className="px-4 py-3 border-b border-gray-100 last:border-0 cursor-pointer transition-colors"
+                          onMouseEnter={(e) => { if (!isFirst) e.currentTarget.style.backgroundColor = '#fff7f0'; }}
+                          onMouseLeave={(e) => { if (!isFirst) e.currentTarget.style.backgroundColor = ''; }}
+                          onClick={() => handleSelectBooking(booking)}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            {/* Left: customer + booking info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className={`text-sm font-semibold truncate ${ 'text-gray-900'}`}>
+                                  <HighlightMatch text={booking.customer_name || 'Unknown'} query={searchQuery} />
+                                </span>
+                                {booking.customer_phone && (
+                                  <span className={`text-xs flex-shrink-0 ${'text-gray-500'}`}>
+                                    <HighlightMatch text={booking.customer_phone} query={searchQuery} />
+                                  </span>
+                                )}
+                              </div>
+                              <div className={`text-xs mt-0.5 flex items-center gap-1.5 flex-wrap ${'text-gray-500'}`}>
+                                {booking.service_name && (
+                                  <span className={`font-medium truncate max-w-[160px] ${'text-gray-700'}`}>
+                                    {booking.service_name}
+                                  </span>
+                                )}
+                                {booking.start_time && (
+                                  <>
+                                    <span className={'text-gray-300'}>·</span>
+                                    <span>{booking.start_time}</span>
+                                  </>
+                                )}
+                                {booking.therapist_name && (
+                                  <>
+                                    <span className={'text-gray-300'}>·</span>
+                                    <span className="truncate max-w-[100px]">{booking.therapist_name}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            {/* Right: status badge */}
+                            {booking.status && (
+                              <span className={`flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${ statusStyle(booking.status)}`}>
+                                {booking.status}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="px-4 py-8 text-center">
+                      <p className="text-sm text-gray-500">No bookings match <strong>"{searchQuery}"</strong></p>
+                      <p className="text-xs text-gray-400 mt-1">Try a different name or phone number</p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}

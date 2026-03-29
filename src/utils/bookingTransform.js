@@ -31,11 +31,19 @@ export function transformBookingDetailFromApi(apiBooking) {
 
     const primaryItem = items?.[0] || {};
 
-    // Extract time in HH:MM format from service_time (may be "09:30:00 AM" or "09:30:00")
+    // Extract time in HH:MM format from any time/datetime string
+    // Handles: "09:30", "09:30:00", "09:30:00 AM", "2026-03-29T09:30:00", "2026-03-29 09:30:00"
     const extractTimeHHMM = (timeStr) => {
       if (!timeStr) return '';
-      // Extract first 5 characters (HH:MM) from any time format
-      return timeStr.substring(0, 5);
+      const s = String(timeStr);
+      // Full ISO datetime: "2026-03-29T09:30:00[.000Z]"
+      if (s.includes('T')) return s.split('T')[1].substring(0, 5);
+      // Date + time separated by space: "2026-03-29 09:30:00"
+      if (s.includes(' ') && s.indexOf('-') < s.indexOf(' ')) {
+        return s.split(' ')[1].substring(0, 5);
+      }
+      // Pure time or time with AM/PM: "09:30:00" or "09:30:00 AM"
+      return s.substring(0, 5);
     };
 
     // Helper to calculate end time from start time and duration
@@ -285,20 +293,29 @@ export function transformBookingFromApi(apiBooking) {
         if (lower.includes('cancel')) normalizedStatus = 'Cancelled';
         else if (lower.includes('confirm')) normalizedStatus = 'Confirmed';
       }
+    // Extract HH:MM from any time/datetime string — same logic as transformBookingDetailFromApi
+    const extractTimeHHMM = (timeStr) => {
+      if (!timeStr) return '';
+      const s = String(timeStr);
+      if (s.includes('T')) return s.split('T')[1].substring(0, 5);
+      if (s.includes(' ') && s.indexOf('-') < s.indexOf(' ')) return s.split(' ')[1].substring(0, 5);
+      return s.substring(0, 5);
+    };
+
     const transformedBooking = {
       id: bookingData.booking_id || bookingData.id,
       item_id: bookingData.id,
       customer_id: bookingData.user_id,
       customer_name: customerName,
       customer_email: bookingData.customer_email || bookingData.user?.email,
-      customer_phone: bookingData.mobile_number || bookingData.user?.contact_number,
-      therapist_id: items[0].therapist_id,
-      therapist_name: items[0].therapist,
-      service_id: items[0].service_id,
-      service_name: items[0].service,
+      customer_phone: bookingData.mobile_number || bookingData.customer_phone || bookingData.user?.contact_number,
+      therapist_id: items[0].therapist_id || items[0].therapist,
+      therapist_name: items[0].therapist_name || items[0].therapist_full_name || bookingData.therapist_name || items[0].therapist,
+      service_id: items[0].service_id || items[0].service,
+      service_name: items[0].service_name || items[0].service_full_name || bookingData.service_name || items[0].service,
       service_description: bookingData.service_description || bookingData.service_description_translated || '',
-      start_time: items[0].start_time,
-      end_time: items[0].end_time,
+      start_time: extractTimeHHMM(items[0].start_time),
+      end_time: extractTimeHHMM(items[0].end_time),
       duration: items[0].duration,
       date: bookingData.service_date,
       room_id: primaryRoom?.room_id,

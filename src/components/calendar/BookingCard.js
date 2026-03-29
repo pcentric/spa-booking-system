@@ -61,7 +61,24 @@ function BookingCard({ booking, therapistIndex, bookingIndexInTherapist, onBooki
           }}
           onClick={handleClick}
         >
-          <div className="p-2 h-full flex flex-col justify-between overflow-hidden text-xs" style={{ textDecoration: isCancelled ? 'line-through' : 'none' }}>
+          {/* === TINY CARD (15 min / 40px) — single line only === */}
+          {height < 50 ? (
+            <div
+              className="px-1.5 h-full flex items-center overflow-hidden text-xs"
+              style={{ textDecoration: isCancelled ? 'line-through' : 'none' }}
+            >
+              <span className="font-semibold truncate text-[11px] leading-none">
+                {booking.service_name || 'Service'}
+              </span>
+              {booking.customer_name && (
+                <span className="ml-1 font-bold truncate text-[10px] leading-none opacity-80">
+                  · {booking.customer_name}
+                </span>
+              )}
+            </div>
+          ) : (
+
+        <div className="p-2 h-full flex flex-col justify-between overflow-hidden text-xs" style={{ textDecoration: isCancelled ? 'line-through' : 'none' }}>
             {/* Service Name */}
             <div className="font-medium truncate leading-snug text-[12px]">
               {booking.service_name || 'Service'}
@@ -74,10 +91,12 @@ function BookingCard({ booking, therapistIndex, bookingIndexInTherapist, onBooki
               </div>
             )}
 
-            {/* Phone Number */}
-            <div className="font-normal truncate leading-tight text-[11px] text-gray-700 mt-0.5">
-              {booking.customer_phone || ''}
-            </div>
+            {/* Phone Number — hide on short cards */}
+            {height >= 64 && (
+              <div className="font-normal truncate leading-tight text-[11px] text-gray-700 mt-0.5">
+                {booking.customer_phone || ''}
+              </div>
+            )}
 
             {/* Customer Name (bold) */}
             <div className="font-bold truncate leading-snug text-[11px]">
@@ -133,6 +152,7 @@ function BookingCard({ booking, therapistIndex, bookingIndexInTherapist, onBooki
               )}
             </div>
           </div>
+          )} {/* end height >= 50 branch */}
         </div>
       )}
     </Draggable>
