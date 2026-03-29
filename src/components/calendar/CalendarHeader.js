@@ -6,7 +6,7 @@ import logger from '../../utils/logger';
  * Color-coded by gender (pink female #EC4899, blue male #3B82F6)
  * Receives virtualization state from CalendarGrid to stay in sync
  */
-function CalendarHeader({ containerRef, virtualGrid, therapists = [], bookings = [] }) {
+function CalendarHeader({ containerRef, virtualGrid, therapists = [], bookings = [], columnWidth = 180 }) {
   const visibleTherapists = useMemo(() => {
     if (!therapists || therapists.length === 0) return [];
     return therapists.slice(
@@ -59,27 +59,27 @@ function CalendarHeader({ containerRef, virtualGrid, therapists = [], bookings =
               key={`header-${therapist.id}`}
               className="relative flex flex-col items-center justify-center border-r border-gray-300 bg-white"
               style={{
-                width: '180px',
+                width: `${columnWidth}px`,
                 height: '60px',
-                minWidth: '180px',
+                minWidth: `${columnWidth}px`,
               }}
             >
-                <div
-                className={`absolute top-3 left-5 w-7 h-7 rounded-full ${getBadgeColor(
+              <div
+                className={`absolute top-2 left-2 w-6 h-6 rounded-full ${getBadgeColor(
                   therapist.gender
                 )} flex items-center justify-center shadow-md`}
               >
-                <span className="text-xs font-bold text-white">
+                <span className="text-[10px] font-bold text-white">
                   {bookingCount}
                 </span>
               </div>
               {/* Therapist Name */}
-              <div className="text-sm font-semibold text-gray-900 truncate px-12 max-w-full text-center">
+              <div className="text-xs font-semibold text-gray-900 truncate px-8 max-w-full text-center">
                 {therapist.alias}
               </div>
 
               {/* Gender Label */}
-              <div className="text-xs font-medium text-gray-600 mt-1">
+              <div className="text-[10px] font-medium text-gray-600 mt-0.5">
                 {genderLabel}
               </div>
             </div>

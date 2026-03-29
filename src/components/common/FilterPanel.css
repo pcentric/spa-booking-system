@@ -202,3 +202,33 @@
   background-color: #fff0e6;
   border-radius: 4px;
 }
+
+/* ── Mobile responsive ── */
+@media (max-width: 640px) {
+  .filter-panel {
+    width: calc(100vw - 24px);
+    right: 12px;
+    max-height: 80vh;
+  }
+
+  .status-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-content {
+    padding: 12px;
+  }
+
+  .filter-section {
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+  }
+
+  .filter-header {
+    padding: 12px;
+  }
+
+  .therapist-list {
+    max-height: 120px;
+  }
+}

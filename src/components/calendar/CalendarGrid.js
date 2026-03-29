@@ -10,6 +10,7 @@ import useMergedTherapists from '../../hooks/useMergedTherapists';
 import { useUI } from '../../hooks/useUI';
 import logger from '../../utils/logger';
 import { SLOT_HEIGHT, TOTAL_SLOTS } from '../../utils/timeUtils';
+import { useColumnWidth } from '../../hooks/useColumnWidth';
 
 /**
  * CalendarSkeleton — Shown during first page load (isLoading + no therapists yet).
@@ -71,6 +72,7 @@ function CalendarGrid({ selectedDate, onDateChange, onBookingClick, filters = {}
   const { bookings, rescheduleOptimistic, rescheduleRollback, updateBooking, isPageLoading } = useBookings();
   const therapists = useMergedTherapists(); // Already normalized and merged
   const { addToast, openPanel } = useUI();
+  const columnWidth = useColumnWidth(); // Responsive: 110–180px based on viewport
 
   // Therapists are already normalized by useMergedTherapists (includes all therapists + bookings)
   const therapistCount = therapists.length || 0;
@@ -78,14 +80,14 @@ function CalendarGrid({ selectedDate, onDateChange, onBookingClick, filters = {}
   const virtualGrid = useVirtualGrid({
     totalColumns: therapistCount,
     totalRows: TOTAL_SLOTS,
-    columnWidth: 180,
+    columnWidth,
     rowHeight: SLOT_HEIGHT,
     overscanColumns: 3,
     overscanRows: 5,
     containerRef,
   });
 
-  const totalWidth = therapistCount * 180;
+  const totalWidth = therapistCount * columnWidth;
   const totalHeight = TOTAL_SLOTS * SLOT_HEIGHT;
 
   // Get visible therapists based on virtualization
@@ -355,6 +357,7 @@ function CalendarGrid({ selectedDate, onDateChange, onBookingClick, filters = {}
                   virtualGrid={virtualGrid}
                   therapists={therapists}
                   bookings={bookingsList}
+                  columnWidth={columnWidth}
                 />
               </div>
             </div>
@@ -390,7 +393,7 @@ function CalendarGrid({ selectedDate, onDateChange, onBookingClick, filters = {}
                   left: `${virtualGrid.offsetLeft}px`,
                   width: `${
                     (virtualGrid.visibleColumnRange.end - virtualGrid.visibleColumnRange.start) *
-                    180
+                    columnWidth
                   }px`,
                 }}
               >

@@ -172,9 +172,9 @@ const FiltersBar = ({ filters = {}, onFiltersChange }) => {
 
   return (
     <>
-      <div className="h-20 bg-white border-b border-gray-200 px-6 flex items-center gap-4">
-        {/* Left: Outlet Info */}
-        <div className="flex flex-col gap-0.5 min-w-fit">
+      <div className="bg-white border-b border-gray-200 px-3 md:px-6 py-2 md:py-0 md:h-20 flex flex-wrap md:flex-nowrap items-center gap-2 md:gap-4">
+        {/* Left: Outlet Info — desktop only */}
+        <div className="hidden md:flex flex-col gap-0.5 min-w-fit">
           <div className="text-sm font-bold text-gray-900 cursor-pointer hover:text-brand leading-tight">
             Liat Towers ▾
           </div>
@@ -183,8 +183,8 @@ const FiltersBar = ({ filters = {}, onFiltersChange }) => {
           </div>
         </div>
 
-        {/* Center: Customer booking search */}
-        <div className="flex-1 max-w-md relative" ref={searchRef}>
+        {/* Center: Customer booking search — full-width on mobile, constrained on desktop */}
+        <div className="w-full md:flex-1 md:max-w-md order-last md:order-none relative" ref={searchRef}>
           <div className="relative flex items-center">
             <svg
               className="absolute left-3 text-gray-400 pointer-events-none"
@@ -332,18 +332,18 @@ const FiltersBar = ({ filters = {}, onFiltersChange }) => {
         </div>
 
         {/* Right: Controls */}
-        <div className="flex items-center gap-2 ml-auto relative">
+        <div className="flex items-center gap-1.5 md:gap-2 ml-auto relative flex-shrink-0">
 
           {/* Filter Button */}
           <button
             onClick={() => setIsFilterModalOpen(true)}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold border rounded-md transition-colors relative ${
+            className={`flex items-center gap-1.5 px-3 md:px-4 py-2 text-sm font-semibold border rounded-md transition-colors relative ${
               isFilterActive()
                 ? 'bg-brand-orange text-white border-brand-orange hover:bg-brand-orange/90'
                 : 'text-gray-800 border-gray-300 bg-white hover:bg-gray-50'
             }`}
           >
-            Filter
+            <span className="hidden sm:inline">Filter</span>
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="8" y2="18"/>
             </svg>
@@ -356,41 +356,41 @@ const FiltersBar = ({ filters = {}, onFiltersChange }) => {
           <div className="flex items-center border border-gray-300 rounded-md overflow-visible bg-white relative">
             <button
               onClick={handleTodayClick}
-              className="px-3 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 transition-colors border-r border-gray-300"
+              className="px-2 md:px-3 py-2 text-xs md:text-sm font-semibold text-gray-800 hover:bg-gray-50 transition-colors border-r border-gray-300"
             >
               Today
             </button>
             <button
               onClick={handlePreviousDay}
-              className="px-2 py-2 text-gray-500 hover:bg-gray-50 transition-colors text-lg leading-none"
+              className="px-1.5 md:px-2 py-2 text-gray-500 hover:bg-gray-50 transition-colors text-lg leading-none"
               title="Previous day"
             >
               ‹
             </button>
-            <span className="px-3 py-2 text-sm font-semibold text-gray-800 min-w-[110px] text-center select-none">
+            <span className="px-1.5 md:px-3 py-2 text-xs md:text-sm font-semibold text-gray-800 min-w-[80px] md:min-w-[110px] text-center select-none">
               {formatDateDisplay(selectedDate)}
             </span>
             <button
               onClick={handleNextDay}
-              className="px-2 py-2 text-gray-500 hover:bg-gray-50 transition-colors text-lg leading-none"
+              className="px-1.5 md:px-2 py-2 text-gray-500 hover:bg-gray-50 transition-colors text-lg leading-none"
               title="Next day"
             >
               ›
             </button>
             <div className="w-px bg-gray-300 h-8 self-center" />
             <button
-  type="button"
-  onClick={openDatePicker}
-  className="px-3 py-2 text-gray-500 hover:bg-gray-50 transition-colors cursor-pointer flex items-center"
-  title="Open calendar"
->
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-    <line x1="16" y1="2" x2="16" y2="6"/>
-    <line x1="8" y1="2" x2="8" y2="6"/>
-    <line x1="3" y1="10" x2="21" y2="10"/>
-  </svg>
-</button>
+              type="button"
+              onClick={openDatePicker}
+              className="px-2 md:px-3 py-2 text-gray-500 hover:bg-gray-50 transition-colors cursor-pointer flex items-center"
+              title="Open calendar"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+            </button>
           </div>
 
           {/* Date input - styled as hidden but clickable via label */}
