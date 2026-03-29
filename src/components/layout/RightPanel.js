@@ -67,18 +67,18 @@ const RightPanel = () => {
 
   return (
     <>
-      {/* Mobile backdrop */}
+      {/* Mobile backdrop — sits below NavBar (top-16) */}
       {isPanelOpen && (
         <div
-          className="md:hidden fixed inset-0 z-30 bg-black/40"
+          className="md:hidden fixed top-16 inset-x-0 bottom-0 z-30 bg-black/40"
           onClick={closePanel}
         />
       )}
 
       <div
         className={`fixed right-0 z-40 bg-white border-l border-gray-200 shadow-lg transition-transform duration-300 ease-in-out flex flex-col
-          top-0 h-screen w-full
-          md:top-16 md:h-[calc(100%-4rem)] md:w-96
+          top-16 h-[calc(100vh-4rem)] w-full
+          md:w-96
           ${isPanelOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
         {/* Panel Header */}
@@ -119,6 +119,7 @@ const RightPanel = () => {
                   booking={bookingForEdit}
                   initialData={panelMode === 'create' ? panelInitialData : null}
                   onSuccess={handleFormSuccess}
+                  hideSubmit={true}
                 />
               )}
             </>
@@ -127,18 +128,20 @@ const RightPanel = () => {
           )}
         </div>
 
-        {/* Footer CTA Button */}
+        {/* Footer CTA — Create/Update + Cancel */}
         {(panelMode === 'create' || panelMode === 'edit') && (
-          <div className="px-4 md:px-6 py-4 border-t border-gray-200 bg-white flex-shrink-0">
+          <div className="px-4 md:px-6 py-3 border-t border-gray-200 bg-white flex-shrink-0 flex flex-col gap-2">
             <button
-              onClick={() => {
-                if (panelMode === 'create' || panelMode === 'edit') {
-                  formRef.current?.requestSubmit();
-                }
-              }}
-              className="w-full py-3 bg-brand text-white font-semibold text-base rounded hover:bg-opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => formRef.current?.requestSubmit()}
+              className="w-full py-3 bg-brand text-white font-semibold text-base rounded hover:bg-opacity-90 transition-all"
             >
               {panelMode === 'create' ? 'Create Booking' : 'Update Booking'}
+            </button>
+            <button
+              onClick={closePanel}
+              className="w-full py-2.5 border border-gray-300 text-gray-700 font-semibold text-sm rounded hover:bg-gray-50 transition-all"
+            >
+              Cancel
             </button>
           </div>
         )}

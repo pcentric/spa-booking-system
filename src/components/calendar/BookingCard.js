@@ -61,98 +61,86 @@ function BookingCard({ booking, therapistIndex, bookingIndexInTherapist, onBooki
           }}
           onClick={handleClick}
         >
-          {/* === TINY CARD (15 min / 40px) — single line only === */}
+          {/*
+            Height tiers:
+            < 50px  (15 min)  → single line: service · customer
+            50–79px (30 min)  → service + customer, NO icons
+            80–119px (45 min) → service + customer + icons
+            120px+  (60 min+) → all fields: service + phone + customer + icons
+          */}
           {height < 50 ? (
+            /* ── TINY: 15 min ── */
             <div
-              className="px-1.5 h-full flex items-center overflow-hidden text-xs"
+              className="px-1.5 h-full flex items-center overflow-hidden"
               style={{ textDecoration: isCancelled ? 'line-through' : 'none' }}
             >
-              <span className="font-semibold truncate text-[11px] leading-none">
+              <span className="font-semibold truncate text-[10px] leading-none">
                 {booking.service_name || 'Service'}
               </span>
               {booking.customer_name && (
-                <span className="ml-1 font-bold truncate text-[10px] leading-none opacity-80">
+                <span className="ml-1 font-bold truncate text-[9px] leading-none opacity-80 flex-shrink-0">
                   · {booking.customer_name}
                 </span>
               )}
             </div>
+          ) : height < 80 ? (
+            /* ── SHORT: 30 min — service + customer, no icons ── */
+            <div
+              className="px-1.5 py-1 h-full flex flex-col justify-between overflow-hidden"
+              style={{ textDecoration: isCancelled ? 'line-through' : 'none' }}
+            >
+              <div className="font-semibold truncate text-[11px] leading-tight">
+                {booking.service_name || 'Service'}
+              </div>
+              <div className="font-bold truncate text-[10px] leading-tight">
+                {booking.customer_name || 'Customer'}
+              </div>
+            </div>
           ) : (
-
-        <div className="p-2 h-full flex flex-col justify-between overflow-hidden text-xs" style={{ textDecoration: isCancelled ? 'line-through' : 'none' }}>
-            {/* Service Name */}
-            <div className="font-medium truncate leading-snug text-[12px]">
-              {booking.service_name || 'Service'}
-            </div>
-
-            {/* Service Description — only shown when card is tall enough */}
-            {booking.service_description && height >= 72 && (
-              <div className="truncate leading-tight text-[10px] opacity-70 mt-0.5">
-                {booking.service_description}
+            /* ── NORMAL: 45 min+ — full layout ── */
+            <div
+              className="p-1.5 h-full flex flex-col overflow-hidden text-xs"
+              style={{ textDecoration: isCancelled ? 'line-through' : 'none' }}
+            >
+              {/* Service Name */}
+              <div className="font-semibold truncate leading-tight text-[11px]">
+                {booking.service_name || 'Service'}
               </div>
-            )}
 
-            {/* Phone Number — hide on short cards */}
-            {height >= 64 && (
-              <div className="font-normal truncate leading-tight text-[11px] text-gray-700 mt-0.5">
-                {booking.customer_phone || ''}
-              </div>
-            )}
-
-            {/* Customer Name (bold) */}
-            <div className="font-bold truncate leading-snug text-[11px]">
-              {booking.customer_name || 'Customer'}
-            </div>
-
-            {/* Icon Badges Row */}
-            <div className="flex gap-0.5 flex-wrap mt-auto pt-1">
-              {/* C icon - green */}
-              <span
-                style={{ background: '#367c41' }}
-                className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0"
-              >
-                C
-              </span>
-
-              {/* ★ icon - tan */}
-              <span
-                style={{ background: '#aa7a5f' }}
-                className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[9px] flex-shrink-0"
-              >
-                ★
-              </span>
-
-              {/* S icon - brown */}
-              <span
-                style={{ background: '#7a5f3c' }}
-                className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0"
-              >
-                S
-              </span>
-
-              {/* 🌐 icon - blue */}
-              <span
-                style={{ background: '#3b82f6' }}
-                className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px] flex-shrink-0"
-              >
-                🌐
-              </span>
-
-              {/* Notes icon - only if booking has a description/note */}
-              {(booking.description || booking.notes) && (
-                <span className="w-4 h-4 rounded-full bg-gray-400 flex items-center justify-center text-white text-[8px] flex-shrink-0">
-                  📋
-                </span>
+              {/* Service Description — 120px+ only */}
+              {booking.service_description && height >= 120 && (
+                <div className="truncate text-[9px] opacity-60 mt-0.5">
+                  {booking.service_description}
+                </div>
               )}
 
-              {/* Room icon - only if room assigned */}
-              {booking.room_id && (
-                <span className="w-4 h-4 rounded-full bg-gray-400 flex items-center justify-center text-white text-[8px] flex-shrink-0">
-                  🗂
-                </span>
+              {/* Phone Number — 120px+ only */}
+              {height >= 120 && booking.customer_phone && (
+                <div className="truncate text-[10px] text-gray-600 mt-0.5">
+                  {booking.customer_phone}
+                </div>
               )}
+
+              {/* Customer Name */}
+              <div className="font-bold truncate text-[10px] mt-0.5">
+                {booking.customer_name || 'Customer'}
+              </div>
+
+              {/* Icon Badges — pushed to bottom */}
+              <div className="flex gap-0.5 flex-wrap mt-auto pt-0.5">
+                <span style={{ background: '#367c41' }} className="w-3.5 h-3.5 rounded-full flex items-center justify-center text-white text-[7px] font-bold flex-shrink-0">C</span>
+                <span style={{ background: '#aa7a5f' }} className="w-3.5 h-3.5 rounded-full flex items-center justify-center text-white text-[8px] flex-shrink-0">★</span>
+                <span style={{ background: '#7a5f3c' }} className="w-3.5 h-3.5 rounded-full flex items-center justify-center text-white text-[7px] font-bold flex-shrink-0">S</span>
+                <span style={{ background: '#3b82f6' }} className="w-3.5 h-3.5 rounded-full flex items-center justify-center text-white text-[7px] flex-shrink-0">🌐</span>
+                {(booking.description || booking.notes) && (
+                  <span className="w-3.5 h-3.5 rounded-full bg-gray-400 flex items-center justify-center text-white text-[7px] flex-shrink-0">📋</span>
+                )}
+                {booking.room_id && (
+                  <span className="w-3.5 h-3.5 rounded-full bg-gray-400 flex items-center justify-center text-white text-[7px] flex-shrink-0">🗂</span>
+                )}
+              </div>
             </div>
-          </div>
-          )} {/* end height >= 50 branch */}
+          )}
         </div>
       )}
     </Draggable>

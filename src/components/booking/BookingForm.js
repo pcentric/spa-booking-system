@@ -17,7 +17,7 @@ import Input from '../common/Input';
 import Select from '../common/Select';
 import BookingItemRow from './BookingItemRow';
 
-const BookingForm = React.forwardRef(({ booking, initialData, onSuccess }, ref) => {
+const BookingForm = React.forwardRef(({ booking, initialData, onSuccess, hideSubmit = false }, ref) => {
   const { createBooking, updateBooking, isSubmitting } = useBookings();
   const { addToast, openModal, closeModal } = useUI();
   const { user } = useAuth();
@@ -487,16 +487,18 @@ useEffect(() => {
         />
       </div>
 
-      {/* Submit Buttons */}
-      <div className="space-y-2 pt-4">
-      <button
-  type="submit"
-  disabled={isSubmitting || (booking && !isDirty)}
-          className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isSubmitting ? 'Saving...' : (booking ? 'Update Booking' : 'Create Booking')}
-        </button>
-      </div>
+      {/* Submit Button — hidden when rendered inside RightPanel (panel provides its own footer button) */}
+      {!hideSubmit && (
+        <div className="space-y-2 pt-4">
+          <button
+            type="submit"
+            disabled={isSubmitting || (booking && !isDirty)}
+            className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? 'Saving...' : (booking ? 'Update Booking' : 'Create Booking')}
+          </button>
+        </div>
+      )}
     </form>
   );
 });

@@ -62,14 +62,14 @@ const NavBar = () => {
 
         {/* Right Actions */}
         <div className="flex items-center gap-3 ml-auto">
-          {/* Get for free — hidden on mobile */}
-          <button className="hidden sm:block px-4 py-2 bg-white text-brand font-medium text-sm rounded-lg hover:bg-gray-100 transition-colors">
+          {/* Get for free — desktop only */}
+          <button className="hidden md:block px-4 py-2 bg-white text-brand font-medium text-sm rounded-lg hover:bg-gray-100 transition-colors">
             Get for free
           </button>
 
-          {/* User Avatar */}
+          {/* User Avatar — desktop only */}
           <div
-            className="w-8 h-8 md:w-10 md:h-10 bg-white/20 rounded-full flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors"
+            className="hidden md:flex w-10 h-10 bg-white/20 rounded-full items-center justify-center cursor-pointer hover:bg-white/30 transition-colors"
             title="User menu"
           >
             <span className="text-white font-semibold text-sm">U</span>
@@ -84,7 +84,7 @@ const NavBar = () => {
             ✕
           </button>
 
-          {/* Hamburger — mobile only */}
+          {/* Hamburger — mobile only (single button on mobile) */}
           <button
             className="md:hidden p-2 text-white hover:bg-white/10 rounded-md transition-colors"
             onClick={() => setMobileMenuOpen((o) => !o)}
