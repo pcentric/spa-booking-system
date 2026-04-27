@@ -84,25 +84,9 @@ export function useMergedTherapists() {
     }
 
     // Step 3: Convert to sorted array (by id) for stable rendering
-    let sorted = Array.from(therapistMap.values()).sort((a, b) => a.id - b.id);
-
-    // Step 4: Filter to only therapists with bookings (avoid rendering 146 empty therapists)
-    if (bookings && bookings.size > 0) {
-      const bookingTherapistIds = new Set();
-      bookings.forEach(b => {
-        const tid = Number(b.therapist_id);
-        if (!isNaN(tid)) bookingTherapistIds.add(tid);
-      });
-
-      // Keep only therapists that have bookings
-      sorted = sorted.filter(t => bookingTherapistIds.has(t.id));
-
-      console.log('🎯 Filtered to therapists with bookings:', {
-        originalCount: Array.from(therapistMap.values()).length,
-        filteredCount: sorted.length,
-        therapistIds: sorted.map(t => t.id),
-      });
-    }
+    // Show ALL available therapists (from API + bookings), not just those with bookings.
+    // Virtualization in CalendarGrid ensures only visible columns render.
+    const sorted = Array.from(therapistMap.values()).sort((a, b) => a.id - b.id);
 
     logger.debug('useMergedTherapists', 'Merged therapists', {
       apiCount: apiTherapists?.length || 0,

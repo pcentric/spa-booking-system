@@ -9,7 +9,7 @@ import { getBookingDetail, getUserDetails } from '../../services/bookingService'
 const BookingPanel = ({ onClose }) => {
   const formRef = useRef(null);
   const { isPanelOpen, panelMode, panelBookingId, closePanel } = useUI();
-  const { selectedBooking } = useBookings();
+  const { selectedBooking, isSubmitting } = useBookings();
   const [fetchedBooking, setFetchedBooking] = useState(null);
   const [isLoadingBooking, setIsLoadingBooking] = useState(false);
 
@@ -33,7 +33,7 @@ const BookingPanel = ({ onClose }) => {
               logger.warn('BookingPanel', 'Error parsing content JSON', { error: e.message });
             }
           }
-
+          console.log(customerId, "customerId is here? ")
           // Fetch user details if we have a customer ID
           if (customerId) {
             customerData = await getUserDetails(customerId);
@@ -194,9 +194,12 @@ const BookingPanel = ({ onClose }) => {
               handleClose();
             }
           }}
+          disabled={(panelMode === 'create' || panelMode === 'edit') && isSubmitting}
           className="w-full py-3 bg-brand text-white font-semibold text-base rounded hover:bg-opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {panelMode === 'detail' ? 'Close' : panelMode === 'create' ? 'Create Booking' : 'Update Booking'}
+          {isSubmitting
+            ? 'Saving...'
+            : panelMode === 'detail' ? 'Close' : panelMode === 'create' ? 'Create Booking' : 'Update Booking'}
         </button>
       </div>
     </div>

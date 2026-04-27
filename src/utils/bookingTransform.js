@@ -116,10 +116,7 @@ export function transformBookingDetailFromApi(apiBooking) {
     additionalData.customer_email ||
     '',
   customer_phone: customerPhone,
-  therapist_id:
-  apiBooking.therapist_id ||
-  primaryItem.therapist_id ||
-  null,
+  therapist_id: Number(apiBooking.therapist_id || primaryItem.therapist_id) || null,
 
 therapist_name:
   apiBooking.therapist_name ||
@@ -309,7 +306,7 @@ export function transformBookingFromApi(apiBooking) {
       customer_name: customerName,
       customer_email: bookingData.customer_email || bookingData.user?.email,
       customer_phone: bookingData.mobile_number || bookingData.customer_phone || bookingData.user?.contact_number,
-      therapist_id: items[0].therapist_id || items[0].therapist,
+      therapist_id: Number(items[0].therapist_id || items[0].therapist) || null,
       therapist_name: items[0].therapist_name || items[0].therapist_full_name || bookingData.therapist_name || items[0].therapist,
       service_id: items[0].service_id || items[0].service,
       service_name: items[0].service_name || items[0].service_full_name || bookingData.service_name || items[0].service,

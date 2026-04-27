@@ -1,5 +1,4 @@
-import React, { useRef, useCallback } from 'react';
-import { DragDropContext } from '@hello-pangea/dnd';
+import React, { useRef, useCallback, useEffect } from 'react';
 import CalendarHeader from './CalendarHeader';
 import TimeGutter from './TimeGutter';
 import TherapistColumn from './TherapistColumn';
@@ -9,8 +8,10 @@ import useBookings from '../../hooks/useBookings';
 import useMergedTherapists from '../../hooks/useMergedTherapists';
 import { useUI } from '../../hooks/useUI';
 import logger from '../../utils/logger';
-import { SLOT_HEIGHT, TOTAL_SLOTS } from '../../utils/timeUtils';
+import { SLOT_HEIGHT, TOTAL_SLOTS, snapToNearestSlot, minutesToTimeString, calculateEndTime } from '../../utils/timeUtils';
 import { useColumnWidth } from '../../hooks/useColumnWidth';
+import { updateBooking as updateBookingApi } from '../../services/bookingService';
+import { transformItemToApi } from '../../utils/bookingTransform';
 
 /**
  * CalendarSkeleton — Shown during first page load (isLoading + no therapists yet).
@@ -69,10 +70,20 @@ function CalendarSkeleton() {
  */
 function CalendarGrid({ selectedDate, onDateChange, onBookingClick, filters = {} }) {
   const containerRef = useRef(null);
-  const { bookings, rescheduleOptimistic, rescheduleRollback, updateBooking, isPageLoading } = useBookings();
+  const { bookings, rescheduleOptimistic, rescheduleRollback, clearPageCache } = useBookings();
   const therapists = useMergedTherapists(); // Already normalized and merged
-  const { addToast, openPanel } = useUI();
+  const { addToast } = useUI();
   const columnWidth = useColumnWidth(); // Responsive: 110–180px based on viewport
+
+  // Track pointer position so we can compute time slot on drag-drop
+  const lastPointerRef = useRef({ x: 0, y: 0 });
+  useEffect(() => {
+    const handler = (e) => {
+      lastPointerRef.current = { x: e.clientX, y: e.clientY };
+    };
+    window.addEventListener('pointermove', handler, { passive: true });
+    return () => window.removeEventListener('pointermove', handler);
+  }, []);
 
   // Therapists are already normalized by useMergedTherapists (includes all therapists + bookings)
   const therapistCount = therapists.length || 0;
@@ -176,7 +187,7 @@ function CalendarGrid({ selectedDate, onDateChange, onBookingClick, filters = {}
   const bookingsByTherapist = React.useMemo(() => {
     const map = new Map();
     for (const booking of bookingsList) {
-      const tid = booking.therapist_id;
+      const tid = Number(booking.therapist_id);
       if (!map.has(tid)) map.set(tid, []);
       map.get(tid).push(booking);
     }
@@ -192,28 +203,12 @@ function CalendarGrid({ selectedDate, onDateChange, onBookingClick, filters = {}
   }, [bookingsList.length, therapists?.length]);
 
   /**
-   * Handle drag end: reschedule booking to new therapist and/or time
+   * Handle native drop: reschedule booking to new therapist and/or time
+   * Called from TherapistColumn's native onDrop with (bookingId, targetTherapistId).
+   * Computes new time from pointer Y position relative to the grid.
    */
-  const handleDragEnd = useCallback(
-    async (result) => {
-      const { draggableId, destination, source } = result;
-
-      if (!destination) {
-        logger.debug('CalendarGrid', 'Drag cancelled (dropped outside)');
-        return;
-      }
-
-      // Don't update if dropped in same position
-      if (
-        source.droppableId === destination.droppableId &&
-        source.index === destination.index
-      ) {
-        logger.debug('CalendarGrid', 'Dropped in same position, no update needed');
-        return;
-      }
-
-      // Parse draggable ID
-      const bookingId = parseInt(draggableId.replace('booking-', ''), 10);
+  const handleDrop = useCallback(
+    async (bookingId, targetTherapistId, dropClientY) => {
       const currentBooking = bookings.get(bookingId);
 
       if (!currentBooking) {
@@ -221,32 +216,71 @@ function CalendarGrid({ selectedDate, onDateChange, onBookingClick, filters = {}
         return;
       }
 
-      // Parse destination therapist ID
-      const destinationTherapistId = parseInt(destination.droppableId.replace('therapist-', ''), 10);
-      const sourceTherapistId = parseInt(source.droppableId.replace('therapist-', ''), 10);
-
-      if (isNaN(destinationTherapistId)) {
-        logger.debug('CalendarGrid', 'Invalid drop destination');
-        return;
-      }
+      const sourceTherapistId = Number(currentBooking.therapist_id);
 
       const previousState = { ...currentBooking };
       const updateData = {};
 
       // Update therapist if changed
-      if (destinationTherapistId !== sourceTherapistId) {
-        const newTherapist = therapists.find(t => Number(t.id) === destinationTherapistId);
-        updateData.therapist_id = destinationTherapistId;
+      if (targetTherapistId !== sourceTherapistId) {
+        const newTherapist = therapists.find(t => Number(t.id) === targetTherapistId);
+        updateData.therapist_id = targetTherapistId;
         updateData.therapist_name = newTherapist?.name;
 
         logger.info('CalendarGrid', 'Rescheduling to different therapist', {
           bookingId,
           oldTherapistId: sourceTherapistId,
-          newTherapistId: destinationTherapistId,
+          newTherapistId: targetTherapistId,
         });
       }
 
-      // Apply optimistic update
+      // Compute new time from pointer Y position relative to the grid
+      const container = containerRef.current;
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        const scrollTop = container.scrollTop;
+        // Grid content starts 60px below container top (header row height)
+        const gridY = Math.max(0, dropClientY - rect.top + scrollTop - 60);
+        const snappedMinutes = snapToNearestSlot(gridY);
+        const newTime = minutesToTimeString(snappedMinutes);
+        const duration = currentBooking.duration || 60;
+
+        if (newTime !== currentBooking.start_time) {
+          updateData.start_time = newTime;
+          updateData.end_time = calculateEndTime(newTime, duration);
+          // service_at for API: DD-MM-YYYY HH:MM:SS
+          if (currentBooking.date) {
+            updateData.service_at = `${currentBooking.date} ${newTime}:00`;
+          }
+          logger.info('CalendarGrid', 'Rescheduling to different time', {
+            bookingId,
+            oldTime: currentBooking.start_time,
+            newTime,
+          });
+        }
+      }
+
+      // No changes detected — dropped in same position
+      if (Object.keys(updateData).length === 0) {
+        logger.debug('CalendarGrid', 'Dropped in same position, no update needed');
+        return;
+      }
+
+      // Build items in API format with updated times/therapist
+      // API requires: service (numeric), price, quantity, start_time, end_time, therapist, etc.
+      if (currentBooking.items?.length > 0) {
+        updateData.items = currentBooking.items.map((item, idx) => {
+          const merged = {
+            ...item,
+            start_time: updateData.start_time || item.start_time,
+            end_time: updateData.end_time || item.end_time,
+            therapist_id: updateData.therapist_id !== undefined ? updateData.therapist_id : item.therapist_id,
+          };
+          return transformItemToApi(merged, idx, currentBooking.customer_name);
+        });
+      }
+
+      // Apply optimistic update — UI moves immediately
       try {
         rescheduleOptimistic(bookingId, updateData);
 
@@ -255,64 +289,36 @@ function CalendarGrid({ selectedDate, onDateChange, onBookingClick, filters = {}
           updates: updateData,
         });
 
-        // Persist to API (with complete booking data including required fields)
-        await updateBooking(bookingId, updateData, currentBooking);
+        // Call API directly — bypasses context.updateBooking's UPDATE_SUCCESS
+        // which would overwrite the optimistic state with stale API-transformed data
+        await updateBookingApi(bookingId, updateData, currentBooking);
+        clearPageCache();
 
         logger.info('CalendarGrid', 'Booking updated successfully', { bookingId });
 
         // Show specific success message based on what changed
-        let successMessage = '✓ Booking updated successfully';
+        const parts = [];
         if (updateData.therapist_id && updateData.therapist_id !== currentBooking.therapist_id) {
           const newTherapist = therapists.find(t => Number(t.id) === updateData.therapist_id);
-          successMessage = `✓ Rescheduled to ${newTherapist?.name || 'therapist'}`;
+          parts.push(newTherapist?.name || 'new therapist');
         }
+        if (updateData.start_time) {
+          parts.push(updateData.start_time);
+        }
+        const successMessage = parts.length > 0
+          ? `Rescheduled to ${parts.join(' at ')}`
+          : 'Booking updated successfully';
         addToast(successMessage, 'success');
       } catch (error) {
-        // Rollback on error
+        // Rollback on error — card returns to original position
         rescheduleRollback(bookingId, previousState);
         logger.error('CalendarGrid', 'Update failed', error.message);
 
-        // Check if it's a validation error (422)
-        const missingFields = error.response?.data?.errors || {};
-        const hasMissingFields = Object.keys(missingFields).length > 0;
-
-        if (error.response?.status === 422 && hasMissingFields) {
-          // Build error message from missing fields
-          const fieldNames = Object.keys(missingFields);
-          const missingFieldsStr = fieldNames.join(', ');
-
-          logger.error('CalendarGrid', 'Validation error - missing fields', {
-            bookingId,
-            missingFields: fieldNames,
-            message: error.response?.data?.message,
-          });
-
-          // Show error and open edit panel
-          addToast(
-            `Required fields missing: ${missingFieldsStr}. Opening edit panel...`,
-            'error',
-            6000
-          );
-
-          // Open the edit panel after a short delay
-          setTimeout(() => {
-            openPanel('edit', bookingId);
-          }, 500);
-        } else {
-          logger.error('CalendarGrid', 'Failed to reschedule booking', {
-            bookingId,
-            error: error.message,
-            status: error.response?.status,
-            response: error.response?.data,
-          });
-
-          // Show user-friendly error message
-          const errorMsg = error.response?.data?.message || error.message || 'Unknown error';
-          addToast(`✗ Failed: ${errorMsg}`, 'error', 6000);
-        }
+        const errorMsg = error.response?.data?.message || error.message || 'Failed to reschedule';
+        addToast(`Failed: ${errorMsg}`, 'error', 5000);
       }
     },
-    [bookings, therapists, rescheduleOptimistic, rescheduleRollback, updateBooking, addToast, openPanel]
+    [bookings, therapists, rescheduleOptimistic, rescheduleRollback, clearPageCache, addToast]
   );
 
   // First-load skeleton — shown while therapists + first page are being fetched
@@ -321,18 +327,8 @@ function CalendarGrid({ selectedDate, onDateChange, onBookingClick, filters = {}
   }
 
   return (
-    <DragDropContext onDragEnd={handleDragEnd}>
       <div className="relative flex flex-col flex-1 bg-white min-h-0 overflow-hidden">
 
-        {/* Page-switching overlay — keeps previous page visible while next page loads */}
-        {isPageLoading && (
-          <div className="absolute inset-0 z-30 bg-white/60 flex items-center justify-center pointer-events-none">
-            <div className="flex items-center gap-3 bg-white rounded-lg shadow-md px-5 py-3 border border-gray-100">
-              <span className="w-5 h-5 border-2 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
-              <span className="text-sm font-medium text-gray-600">Loading page…</span>
-            </div>
-          </div>
-        )}
         {/* Main calendar area */}
         <div className="flex flex-1 overflow-hidden bg-white min-h-0 relative">
           {/* Scrollable calendar grid (includes TimeGutter + CalendarHeader inside for proper positioning) */}
@@ -408,6 +404,7 @@ function CalendarGrid({ selectedDate, onDateChange, onBookingClick, filters = {}
                       bookings={therapistBookings}
                       selectedDate={selectedDate}
                       onBookingClick={onBookingClick}
+                      onDrop={handleDrop}
                       columnWidth={180}
                       visibleRowRange={virtualGrid.visibleRowRange}
                     />
@@ -427,8 +424,6 @@ function CalendarGrid({ selectedDate, onDateChange, onBookingClick, filters = {}
         </div>
         {/* end: main calendar area */}
       </div>
-      {/* end: outer CalendarGrid wrapper */}
-    </DragDropContext>
   );
 }
 

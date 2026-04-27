@@ -1,6 +1,5 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef } from 'react';
 import CalendarGrid from '../components/calendar/CalendarGrid';
-import PaginationControls from '../components/common/PaginationControls';
 import useMasterData from '../hooks/useMasterData';
 import useBookings from '../hooks/useBookings';
 import { useUI } from '../hooks/useUI';
@@ -9,11 +8,8 @@ import { toApiDate } from '../utils/dateUtils';
 
 const CalendarPage = ({ filters = {} }) => {
   const { selectedDate, setSelectedDate, openPanel, refreshKey } = useUI();
-  const { bookings, fetchPage, setSelectedBooking, pagination, isLoading, isPageLoading } = useBookings();
+  const { bookings, fetchBatch, setSelectedBooking, pagination, isLoading, isLoadingMore, loadingProgress } = useBookings();
   const { loadTherapists, loadRooms } = useMasterData();
-
-  // Store date range for batch navigation
-  const dateRangeRef = useRef({ startDate: null, endDate: null });
 
   // Guard against double-fetching: track the date range we last fetched
   // If date range hasn't changed, don't re-fetch (prevents API hammering on re-renders)
@@ -78,13 +74,12 @@ const CalendarPage = ({ filters = {} }) => {
           return;
         }
 
-        // Update last fetched date range and reset batch to 1
+        // Update last fetched date range
         lastFetchedRef.current = { startDate, endDate };
-        dateRangeRef.current = { startDate, endDate };
 
-        // Fetch page 1 (isFirstLoad=true clears map + shows skeleton) + therapists in parallel
+        // Fetch all bookings progressively (page 1 renders immediately, remaining pages load in parallel) + therapists
         await Promise.all([
-          fetchPage(startDate, endDate, 1, 1, true),
+          fetchBatch(startDate, endDate, 1, 1),
           loadTherapists(serviceAt),
         ]);
 
@@ -96,7 +91,7 @@ const CalendarPage = ({ filters = {} }) => {
     };
 
     loadData();
-  }, [selectedDate, refreshKey, fetchPage, loadTherapists, loadRooms]);
+  }, [selectedDate, refreshKey, fetchBatch, loadTherapists, loadRooms]);
 
   const handleBookingClick = (bookingId) => {
     logger.debug('CalendarPage', 'Booking clicked', { bookingId });
@@ -108,27 +103,12 @@ const CalendarPage = ({ filters = {} }) => {
     setSelectedDate(newDate);
   };
 
-  const handleNextPage = useCallback(() => {
-    const { startDate, endDate } = dateRangeRef.current;
-    if (startDate && endDate && pagination.currentPage < pagination.lastPage) {
-      fetchPage(startDate, endDate, pagination.currentPage + 1);
-    }
-  }, [fetchPage, pagination.currentPage, pagination.lastPage]);
-
-  const handlePrevPage = useCallback(() => {
-    const { startDate, endDate } = dateRangeRef.current;
-    if (startDate && endDate && pagination.currentPage > 1) {
-      fetchPage(startDate, endDate, pagination.currentPage - 1);
-    }
-  }, [fetchPage, pagination.currentPage]);
+  // Progressive loading progress
+  const showProgress = isLoadingMore || (loadingProgress.total > 0 && loadingProgress.loaded < loadingProgress.total);
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Calendar Grid — scrollable, takes remaining space */}
-      {/* overflow-hidden (not overflow-auto) so CalendarGrid's own containerRef is the sole scroll container.
-          flex flex-col gives CalendarGrid a proper flex parent so its flex-1 is bounded by the viewport height,
-          preventing the wrapper from growing to natural content height (~2460px) and spawning a competing
-          vertical scrollbar that would steal ~15px of horizontal width and let the grid scroll past the last column. */}
       <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
         <CalendarGrid
           selectedDate={selectedDate}
@@ -138,25 +118,29 @@ const CalendarPage = ({ filters = {} }) => {
         />
       </div>
 
-      {/* Pagination Controls — fixed footer */}
-      <div className="flex-shrink-0 border-t border-gray-200">
-        <PaginationControls
-          pagination={pagination}
-          isLoading={isLoading || isPageLoading}
-          loadedCount={bookings.size}
-          onNextPage={handleNextPage}
-          onPrevPage={handlePrevPage}
-        />
-      </div>
+      {/* Loading progress footer — shown while remaining pages load in background */}
+      {showProgress && (
+        <div className="flex-shrink-0 border-t border-gray-200 bg-gray-50 px-4 py-2">
+          <div className="flex items-center gap-2 text-xs text-gray-600">
+            <span className="inline-block w-3 h-3 border-2 border-gray-300 border-t-orange-500 rounded-full animate-spin" />
+            <span>
+              Loading bookings… {loadingProgress.loaded > 0 && loadingProgress.total > 0
+                ? `${loadingProgress.loaded} / ${loadingProgress.total}`
+                : `${bookings.size} loaded`}
+            </span>
+          </div>
+        </div>
+      )}
 
-      {/* Floating action button for creating new booking */}
-      {/* <button
-        onClick={handleCreateBooking}
-        className="fixed bottom-8 right-8 w-14 h-14 bg-brand text-white rounded-full shadow-lg hover:shadow-xl hover:bg-brand/90 transition-all flex items-center justify-center text-2xl z-30"
-        title="Create new booking"
-      >
-        +
-      </button> */}
+      {/* Booking count summary — shown when all pages are loaded */}
+      {!isLoading && !showProgress && pagination.count > 0 && (
+        <div className="flex-shrink-0 border-t border-gray-200 bg-gray-50 px-4 py-2">
+          <span className="text-xs text-gray-600">
+            <span className="text-green-600 font-bold mr-1">&#10003;</span>
+            <span className="font-semibold text-gray-900">{bookings.size.toLocaleString()}</span> bookings loaded
+          </span>
+        </div>
+      )}
     </div>
   );
 };

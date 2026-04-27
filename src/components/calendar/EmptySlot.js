@@ -50,7 +50,7 @@ function EmptySlot({ slotIndex, therapistId, selectedDate, therapistIndex }) {
 
   return (
     <div
-      className="absolute left-0 right-0 border-b border-gray-200 hover:bg-blue-50 cursor-pointer transition-all duration-200 group"
+      className="absolute left-0 right-0 border-b border-gray-200 hover:bg-blue-50 cursor-pointer transition-all duration-200 group empty-slot"
       style={{
         top: `${slotIndex * SLOT_HEIGHT}px`,
         height: `${SLOT_HEIGHT}px`,

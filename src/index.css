@@ -32,3 +32,11 @@ code {
   height: 100%;
   width: 100%;
 }
+
+/* Hide the "+" icon on empty slots when a card is being dragged over the column */
+.dragging-over .empty-slot .group-hover\:opacity-100 {
+  opacity: 0 !important;
+}
+.dragging-over .empty-slot {
+  pointer-events: none;
+}

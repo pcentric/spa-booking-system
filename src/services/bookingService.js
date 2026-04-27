@@ -423,6 +423,7 @@ export async function cancelBooking(itemId, type = 'normal') {
     formData.append('panel', 'outlet');
 
     // Don't set Content-Type header manually - axios will handle it with FormData
+    console.log(formData, "formData for cancel booking")
     const response = await apiClient.post('/api/v1/bookings/item/cancel', formData);
     const result = response?.data?.data || response?.data;
     return result;

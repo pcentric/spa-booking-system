@@ -775,6 +775,10 @@ export function BookingProvider({ children }) {
     dispatch({ type: 'CLEAR_ERROR' });
   }, []);
 
+  const clearPageCache = useCallback(() => {
+    pageCacheRef.current.clear();
+  }, []);
+
   const value = {
     bookings: state.bookings,
     selectedBookingId: state.selectedBookingId,
@@ -803,6 +807,7 @@ export function BookingProvider({ children }) {
     setSelectedBooking,
     setFilters,
     clearError,
+    clearPageCache,
   };
 
   return <BookingContext.Provider value={value}>{children}</BookingContext.Provider>;
